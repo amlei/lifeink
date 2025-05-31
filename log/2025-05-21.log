@@ -1,0 +1,74 @@
+2025-05-21 10:23:26.988 | INFO     | __main__:<module>:281 - Start Application.
+2025-05-21 10:23:27.946 | INFO     | function.spider:refresh:48 - Clear Stacked.
+2025-05-21 10:23:27.946 | INFO     | __main__:main:270 - Last mark of 【video】:永航员
+2025-05-21 10:23:30.947 | INFO     | function.spider:get:52 - GET https://movie.douban.com/people/215871379/collect?start=0&sort=time&rating=all&filter=all&mode=grid
+2025-05-21 10:23:31.809 | INFO     | function.spider:get:55 - GET https://movie.douban.com/people/215871379/collect?start=0&sort=time&rating=all&filter=all&mode=grid Succeed.
+2025-05-21 10:23:31.811 | INFO     | function.spider:author:85 - Xpath Rules for Author: \[[^\]]*\]||（[.*]）
+2025-05-21 10:23:31.815 | INFO     | function.spider:rating:117 - Xpath Rules for Rating: rating\d+-t
+2025-05-21 10:23:34.938 | INFO     | __main__:create_page:107 - 《爱，死亡和机器人 第四季》创建成功!
+2025-05-21 10:23:37.859 | INFO     | __main__:create_page:107 - 《安多 第二季》创建成功!
+2025-05-21 10:23:45.397 | INFO     | __main__:create_page:107 - 《永航员 第一季》创建成功!
+2025-05-21 10:23:53.290 | INFO     | __main__:create_page:107 - 《你的名字。》创建成功!
+2025-05-21 10:24:06.142 | INFO     | __main__:create_page:107 - 《通往夏天的隧道，再见的出口》创建成功!
+2025-05-21 10:24:13.104 | INFO     | __main__:create_page:107 - 《龙珠大魔》创建成功!
+2025-05-21 10:24:16.562 | INFO     | __main__:create_page:107 - 《夜魔侠：重生 第一季》创建成功!
+2025-05-21 10:24:20.163 | INFO     | __main__:create_page:107 - 《夜魔侠 第三季》创建成功!
+2025-05-21 10:24:26.921 | INFO     | __main__:create_page:107 - 《还有明天》创建成功!
+2025-05-21 10:24:30.862 | INFO     | __main__:create_page:107 - 《十三邀 第八季》创建成功!
+2025-05-21 10:24:34.802 | INFO     | __main__:create_page:107 - 《我独自升级 第二季 -起于暗影-》创建成功!
+2025-05-21 10:24:43.350 | INFO     | __main__:create_page:107 - 《夜魔侠 第二季》创建成功!
+2025-05-21 10:24:49.820 | INFO     | __main__:create_page:107 - 《人生切割术 第二季》创建成功!
+2025-05-21 10:24:53.535 | INFO     | __main__:create_page:107 - 《夜魔侠 第一季》创建成功!
+2025-05-21 10:24:56.521 | INFO     | __main__:create_page:107 - 《异世界归来的舅舅》创建成功!
+2025-05-21 10:24:57.303 | INFO     | __main__:main:275 - Please wait 5s to next page.
+2025-05-21 10:25:03.002 | INFO     | function.spider:refresh:48 - Clear Stacked.
+2025-05-21 10:25:03.003 | INFO     | __main__:main:270 - Last mark of 【video】:永航员
+2025-05-21 10:25:06.003 | INFO     | function.spider:get:52 - GET https://movie.douban.com/people/215871379/collect?start=15&sort=time&rating=all&filter=all&mode=grid
+2025-05-21 10:25:06.940 | INFO     | function.spider:get:55 - GET https://movie.douban.com/people/215871379/collect?start=15&sort=time&rating=all&filter=all&mode=grid Succeed.
+2025-05-21 10:25:06.942 | INFO     | function.spider:author:85 - Xpath Rules for Author: \[[^\]]*\]||（[.*]）
+2025-05-21 10:25:06.946 | INFO     | function.spider:rating:117 - Xpath Rules for Rating: rating\d+-t
+2025-05-21 10:25:09.541 | INFO     | __main__:create_page:107 - 《变形金刚：起源》创建成功!
+2025-05-21 10:25:13.473 | INFO     | __main__:create_page:107 - 《我独自升级》创建成功!
+2025-05-21 10:26:39.327 | INFO     | __main__:<module>:281 - Start Application.
+2025-05-21 10:26:40.298 | INFO     | __main__:main:264 - last mark of 【book】:《你可以说“不”》
+2025-05-21 10:26:43.299 | INFO     | function.spider:get:52 - GET https://book.douban.com/people/215871379/collect?start=0&sort=time&rating=all&filter=all&mode=grid
+2025-05-21 10:26:44.852 | INFO     | function.spider:get:55 - GET https://book.douban.com/people/215871379/collect?start=0&sort=time&rating=all&filter=all&mode=grid Succeed.
+2025-05-21 10:26:44.853 | INFO     | function.spider:title:65 - In title.
+2025-05-21 10:26:44.854 | WARNING  | function.spider:title:71 - Current is invalid.
+2025-05-21 10:26:44.855 | INFO     | function.spider:title:80 - Title: ['做难而正确的事', '稀缺']
+2025-05-21 10:26:44.855 | INFO     | function.spider:author:85 - Xpath Rules for Author: \[[^\]]*\]||（[.*]）
+2025-05-21 10:26:44.856 | INFO     | function.spider:author:90 - Author: ['尤里·莱文', ['桂曙光、桂羽勤', '浙江科学技术出版社', '2024-10-1']]
+2025-05-21 10:26:44.856 | INFO     | function.spider:author:90 - Author: ['塞德希尔·穆来纳森、埃尔德·沙菲尔', ['魏薇、龙志勇', '浙江教育出版社', '2022-9']]
+2025-05-21 10:26:44.856 | INFO     | function.spider:author:90 - Author: ['(美)琳达·巴布科克、(美)布伦达·佩泽、(美)利塞·韦斯特隆德、(美)洛里·R·魏因加特', ['朱彤', '机械工业出版社', '2024-11']]
+2025-05-21 10:26:44.856 | INFO     | function.spider:author:90 - Author: ['沃尔特·艾萨克森', ['汪冰', '中信出版社', '2018-7']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['陈春成', ['上海三联书店', '2020-9']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['露露·米勒', ['陈晓宇', '湖南文艺出版社', '2022-9']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['孟勐', ['机械工业出版社', '2025-3-30']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['刘霄云', ['机械工业出版社', '2025-3']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['吴军', ['人民邮电出版社', '2019-6']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['稻盛和夫', ['曹岫云', '机械工业出版社', '2024-10']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['(美)彼得·霍林斯', ['机械工业出版社', '2025-3']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['谢春霖', ['机械工业出版社', '2019-8-20']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['大前研一', ['宋刚，刘子艺', '机械工业出版社', '2024-10-30']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['大前研一', ['郭超敏', '机械工业出版社', '2018-7']]
+2025-05-21 10:26:44.857 | INFO     | function.spider:author:90 - Author: ['三年一倍', ['机械工业出版社', '2025-1']]
+2025-05-21 10:26:44.860 | INFO     | function.spider:other:104 - Other Info: [['经管'], ['经管'], ['经管', '女性'], ['人物传记'], ['文学'], ['人物传记'], ['经管'], ['经管'], ['社科', '计算机'], ['经管'], ['心理学', '学习'], ['经管'], ['经管'], ['生活'], ['经管']], ['2025-05-10', '2025-05-05', '2025-05-04', '2025-05-04', '2025-04-29', '2025-04-18', '2025-04-17', '2025-04-13', '2025-04-11', '2025-04-08', '2025-04-08', '2025-04-03', '2025-04-02', '2025-04-01', '2025-03-30'], ['浅显易懂的道理，需要许多经历累成，只有在这条路上的人才好懂得吧', '提升认知的一本好书，阅读引言部分已经读到了全书内容', '我们不是螺丝钉，并非这份工作不可。生动、灵活、适应是我们最大的特点，让技能持续进步', '致敬达芬奇！致敬纯粹求知的乐趣！', '夜晚的潜水艇、竹峰寺、红楼梦、李茵的湖四篇最为传神，跟随作者的笔触游历其中', '我一次次怀疑自己是不是边缘人，不想被标签定义，不愿遵循既定规则，与主流观念背道而驰。\n\n怀疑、困顿自己无法融入身边世界。\n\n在别人看来，我看一件事情总是复杂化。如人和人相处，我表达某个场景下不好相处（如观念不同，时事是没法讨论的），却被简单总结为：磁场不同。——被一巴掌拍死。\n\n像这样的脱口而出的结论，真是太轻松了，原来世界这么简单！这竟是人们用「简单」去凸显自己处于优势地位可获得的支配权、操作，或是确定性。\n\n很幸运，我会多探索，多思考，多问为什么，追求多样性。\n\n为什么叫蒲公英？为什么叫鸟？心型为什么被称为心？\n……\n\n抛弃枷锁，我们将获得什么？', '无论你是正寻求改变，亦或处于改变之中，乃至已获得成长跃迁，希望你「温故而知新」。不要陷入像我小时一样“狂妄自大”、“妄自菲薄”。', '不需要从头到尾地读，翻开它，就有为你提供特定职场问题的解决之道和切实可行的策略。篇幅简短，却有效。可以说，这是一本职场沟通宝典！', '内容都有所了解，书中满是：虽然……但是。太影响阅读体验，不去花太多时间读了。读相关人物传记便可窥见全貌。', '一本书，读一遍是一种感觉，再读一遍会有不一样的感觉。而我读是作者不同的两本著作各一遍，其中的思想却已在五年里慢慢消融于心。', '我从这本书里回到了小学，每学期开学都会做的一件事：拿到语文和数学书，快速翻阅闻闻它的味道，细致地看封面装帧、图画内容。', '', '清晰易读。作者将发表的老龄化文章汇集成册，鲜明地表达对日本社会老龄化、低欲望社会提出问题和解决方案。她国事（包括国民的态度和感受），也为我们提供了经验。', '清晰易读。作者将发表的老龄化文章汇集成册，鲜明地表达对日本社会老龄化、低欲望社会提出问题和解决方案。她国事（包括国民的态度和感受），也为我们提供了经验', '很好的投资理财入门科普书！快速了解投资中的风险与机会。\n\nP119，作者的投资行为我感觉：披着价值投资的皮，做着投机。\n\nP143，作者2024年股票收益截图，截图日期当日收益远超沪深300，波动却大得多。\n\n若想跟随作者实盘，需考虑清楚能否承担超过大盘的波动。\n\n钱在谁手中？交易的决定权在自己，亏和赚都需自己承担。']
+2025-05-21 10:26:44.861 | INFO     | function.spider:cover_link:110 - Cover Link: https://img1.doubanio.com/view/subject/s/public/s34981838.jpg
+2025-05-21 10:26:44.861 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s34550935.jpg
+2025-05-21 10:26:44.861 | INFO     | function.spider:cover_link:110 - Cover Link: https://img2.doubanio.com/view/subject/s/public/s35119461.jpg
+2025-05-21 10:26:44.861 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s29802915.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img1.doubanio.com/view/subject/s/public/s33718940.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img3.doubanio.com/view/subject/s/public/s34317763.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s35126334.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s35127734.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s33634524.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img3.doubanio.com/view/subject/s/public/s35052367.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img2.doubanio.com/view/subject/s/public/s35125111.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img9.doubanio.com/view/subject/s/public/s33715304.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img3.doubanio.com/view/subject/s/public/s35040983.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img2.doubanio.com/view/subject/s/public/s29848111.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:cover_link:110 - Cover Link: https://img2.doubanio.com/view/subject/s/public/s35075491.jpg
+2025-05-21 10:26:44.862 | INFO     | function.spider:rating:117 - Xpath Rules for Rating: rating\d+-t
+2025-05-21 10:26:49.959 | INFO     | __main__:create_page:107 - 《做难而正确的事》创建成功!
+2025-05-21 10:26:52.958 | INFO     | __main__:create_page:107 - 《稀缺》创建成功!
+2025-05-21 10:26:58.200 | INFO     | __main__:create_page:113 - 增量更新完毕!, 本次共:2条数据

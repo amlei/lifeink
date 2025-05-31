@@ -14,35 +14,24 @@
 ## 项目结构
 
 ```
-│  .env - 虚拟环境
+│  .env
 │  main.py - 主函数、执行程序
+│  new_book.txt - 上一次更新书籍
+│  new_video.txt - 上一次更新影视
 │  README.md
 │  requirements.txt - 依赖库
 │
 ├─assets - README.md文件
 │
 ├─function - 其它功能函数
-│  │  glo.py - 全局数据
-│  │  initial.py - 初始化
-│  │  logging.py - 日志输出
+│  │  glo.py - 全局数据 
 │  │  spider.py - 爬取个人豆瓣数据
 │  │  __init__.py
-│  │
 │
-├─icon - 图标
-│      book.svg
-│      movie.svg
-│      video.svg
-│
-├─json - 类别数据
-│      book.json - 书籍数据
-│      video.json - 影视数据
-│
-├─last mark - 上次标记
-│      new_book.txt - 上次书籍标记
-│      new_video.txt - 上次影视标记
-│
-└─log - 日志文件
+└─icon - 图标
+        book.svg
+        movie.svg
+        video.svg
 ```
 
 ---

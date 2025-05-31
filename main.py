@@ -12,7 +12,7 @@ import pprint
 import json
 import os
 from datetime import datetime
-from time import sleep
+from time import sleep, time
 from dotenv import load_dotenv
 from notion_client import Client
 from function.glo import Glo
@@ -279,6 +279,8 @@ def main(option: int = 0, page: int = 0) -> None:
 if __name__ == '__main__':
     logger.add(f"./log/{datetime.now().strftime('%Y-%m-%d')}.log")
     logger.info("Start Application.")
-
+    tic = time()
     main()
+    toc = time()
     logger.info("End task.")
+    logger.info(f"执行时间：{toc - tic}")
