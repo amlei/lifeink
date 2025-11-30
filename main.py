@@ -175,7 +175,7 @@ class BookRun:
             properties = json.load(f)
 
             properties["评分"]["select"]["name"] = self.classify.Ratings.pop(0)
-            properties["出版社"]["select"]["name"] = str(publishingCompany)
+            properties["出版社"]["select"]["name"] = str(publishingCompany).replace(",", " ")
             properties["读完时间"]["date"]["start"] = self.classify.Dates.pop(0)
             properties["出版日期"]["date"]["start"] = date
             properties["作者"]["multi_select"] = author
@@ -280,7 +280,7 @@ if __name__ == '__main__':
     logger.add(f"./log/{datetime.now().strftime('%Y-%m-%d')}.log")
     logger.info("Start Application.")
     tic = time()
-    main()
+    main(1)
     toc = time()
     logger.info("End task.")
     logger.info(f"执行时间：{toc - tic}")
