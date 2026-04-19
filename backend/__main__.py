@@ -2,13 +2,13 @@ import argparse
 import json
 import sys
 
-from .community.douban import DoubanClient
+from community.douban import DoubanClient
 
 TYPES = ("profile", "books", "movies", "games", "reviews", "notes")
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="feature", description="Community data scraper")
+    parser = argparse.ArgumentParser(prog="backend", description="Community data scraper")
     parser.add_argument("--type", required=True, choices=TYPES, help="Data type to scrape")
     parser.add_argument("--pages", type=int, default=1, help="Max pages to scrape")
     args = parser.parse_args()

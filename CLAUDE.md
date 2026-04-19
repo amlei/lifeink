@@ -17,13 +17,13 @@ python main.py              # Syncs books to Notion (incremental)
 
 No test suite exists. No linter is configured.
 
-### Feature module (Playwright scraper)
+### Backend module (Playwright scraper)
 
 ```bash
-cd src/feature
+cd backend
 uv sync
 uv run python -m playwright install chromium   # first time only
-uv run python -m feature --type books --pages 3
+uv run python __main__.py --type books --pages 3
 ```
 
 Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`.
@@ -41,21 +41,21 @@ Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`
 5. JSON templates in `json/` define Notion property schemas -- property names are in Chinese (e.g., "评分", "作者", "类别").
 6. `BookRun.update()` processes up to `Glo.MAXNum` (15) items per page with 2-second delays between Notion API calls and 5-second delays between Douban page fetches.
 
-### src/feature/: Playwright Scraper Module
+### backend/: Playwright Scraper Module
 
 Independent `uv`-managed project with its own `pyproject.toml` and `.venv`.
 
-- `DoubanClient` (`client.py`): context manager wrapping Playwright browser lifecycle. Auto-detects `user_id` from `/mine/` redirect. Handles QR login when session expires.
-- `SessionManager` (`session.py`): persists browser storage state to `.playwright/douban-state.json`.
-- `BaseScraper` (`scrapers/base.py`): pagination base class. Subclasses implement `_url()` and `_parse_page()`. Uses `clean()` helper to strip whitespace.
-- Each data type has a Pydantic model (`models/`) and a scraper (`scrapers/`). Models: `Book`, `Movie`, `Game`, `Review`, `Note`, `Profile`.
-- `weread/` and `flomo/` packages are stubs (not yet implemented).
+- `DoubanClient` (`community/douban/client.py`): context manager wrapping Playwright browser lifecycle. Auto-detects `user_id` from `/mine/` redirect. Handles QR login when session expires.
+- `SessionManager` (`community/douban/session.py`): persists browser storage state to `.playwright/douban-state.json`.
+- `BaseScraper` (`community/douban/scrapers/base.py`): pagination base class. Subclasses implement `_url()` and `_parse_page()`. Uses `clean()` helper to strip whitespace.
+- Each data type has a Pydantic model (`community/douban/models/`) and a scraper (`community/douban/scrapers/`). Models: `Book`, `Movie`, `Game`, `Review`, `Note`, `Profile`.
+- `weread/` and `flomo/` packages under `community/` are stubs (not yet implemented).
 - Default browser channel is `msedge`.
 
 ### Key conventions
 
 - All Notion property names in JSON templates and code are Chinese.
-- The root scraper uses `requests`; the feature module uses Playwright. They do not share code.
+- The root scraper uses `requests`; the backend module uses Playwright. They do not share code.
 - `last mark/` directory and `.playwright/` are gitignored (contain user-specific session data).
 - Strictly prohibited from using emojis.
 - All files created for temporary use shall be placed in the `tmp/` directory.
