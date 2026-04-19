@@ -1,176 +1,120 @@
-> Saving data of the books and videos into the notion page with Python.
+# LifeInk AI
 
->使用Python将图书和影视数据存放入Notion中。
+> Personal AI Agent - 聚合书影音日记，用 AI 重新理解你的生活。
 
+LifeInk AI 从豆瓣、微信读书、Flomo 等平台采集个人的阅读、影视、游戏、日记等数据，通过 AI 进行对话分析、偏好洞察，并自动生成周报/月报/年度总结。
 
+---
 
-# 🖼️介绍
+## 愿景
 
-## 环境
+让每个人的生活记录不再是沉睡的数据，而是可以被理解、回顾和重新发现的记忆。
 
-- Python 3.10+ （建议 3.11 及以上）
-- Pycharm / Vs Code / Vs Code Studio
+### 核心能力
+
+- **数据聚合** - 统一采集多平台个人数据（书影音、日记、想法）
+- **AI 对话** - 基于个人数据与 AI 自由对话，获取洞察与推荐
+- **自动报告** - 周报、月报、年报自动生成，支持 Markdown / PDF / Web 导出
+- **数据可视化** - 阅读趋势、评分分布、标签云、时间线看板
+
+---
+
+## 当前状态
+
+### 数据源
+
+- [x] 豆瓣 - 图书、影视、游戏、书评、日记、个人资料（Playwright）
+- [x] 豆瓣 - 图书、影视同步至 Notion（requests）
+- [ ] 微信读书（weread）
+- [ ] Flomo
+
+### 数据同步
+
+- [x] 增量同步至 Notion 数据库
+- [x] 自动登录检测（session 过期弹二维码）
+- [x] 翻页数据提取、图标/封面/评分
+
+---
 
 ## 项目结构
 
 ```
-│  .env
-│  main.py - 主函数、执行程序
-│  new_book.txt - 上一次更新书籍
-│  new_video.txt - 上一次更新影视
-│  README.md
-│  requirements.txt - 依赖库
-│
-├─assets - README.md文件
-│
-├─function - 其它功能函数
-│  │  glo.py - 全局数据
-│  │  spider.py - 爬取个人豆瓣数据
-│  │  __init__.py
-│
-├─icon - 图标
-│       book.svg
-│       movie.svg
-│       video.svg
-│
-├─docs - 文档
-│
-└─src - 新功能模块（独立 uv 项目，不影响原有实现）
-   └─feature
-      └─feature/community
-         ├─douban - 豆瓣数据抓取（Playwright）
-         ├─weread - 微信读书（待开发）
-         └─flomo  - Flomo（待开发）
+ main.py              - Notion 同步入口
+ function/
+   glo.py             - 全局配置
+   spider.py          - 豆瓣数据爬取（requests）
+ json/                - Notion 数据库模板
+ icon/                - 页面图标
+
+ docs/                - 文档
+
+ src/feature/         - 新版模块（uv 独立项目）
+   feature/community/
+     douban/          - 豆瓣数据抓取（Playwright）
+       models/        - 数据模型（Pydantic）
+       scrapers/      - 各类型抓取器
+       client.py      - API 客户端
+       login.py       - 登录管理
+       session.py     - 会话持久化
+     weread/          - 微信读书（待开发）
+     flomo/           - Flomo（待开发）
 ```
 
 ---
 
-# 🐾 步骤
+## 快速开始
 
-1. [Notion API创建](https://www.notion.so/Notion-93ad50c4bcc34c608fdc1fe211d6b322?pvs=21)
-2. [数据爬取](https://www.notion.so/Notion-93ad50c4bcc34c608fdc1fe211d6b322?pvs=21)
-3. 更新入Notion
+### Notion 同步（原有功能）
 
-## 🕷️ 网页数据
+1. 安装依赖：`pip install -r requirements.txt`
+2. 配置 `.env`（TOKEN、DATABASE_ID、COOKIE 等）
+3. 运行 `python main.py`
 
-- 头文件
-  - URL
-  - Cookie
-  - User-Agent
-- 图书
-  - 书名
-  - 图像
-  - 作者
-  - 出版日期
-  - 出版社
-  - 标记数据
-  - 短评
-- 影视
-  - 影片名
-  - 图像
-  - 上映日期
-  - 标记数据
+### Playwright 抓取（新版模块）
 
-
-
-## 🤖 Notion
-
-- [获得Token码](https://www.notion.so/Notion-18d07bcc24d54bddb97110814b23ddb6?pvs=21)
-- 获得数据库页面ID并链接
-- 存入数据
-
-
-
-# 🎢 特征
-
-## [豆瓣网](https://www.douban.com/)数据
-
-- [x] 数据图像
-- [x] 翻页数据提取
-- [x] 增量更新
-
-## 存入 Notion
-
-- [x] 图标
-- [x] 图像
-- [x] 评星
-
-## 新版抓取（`src/feature/`）
-
-基于 Playwright 的独立模块，使用 uv 管理依赖，不依赖原有 requests 方案。
-
-- [x] 自动登录检测（session 过期自动弹出二维码）
-- [x] 豆瓣：图书、影视、游戏、书评、日记、个人资料
-- [ ] 微信读书（weread）
-- [ ] Flomo
+```bash
+cd src/feature
+uv sync
+uv run python -m feature
+```
 
 详见 [src/feature/README.md](./src/feature/README.md)。
 
 ---
 
-# 📋 Todo
+## Roadmap
 
-## 数据源
+### Phase 1 - 数据采集 (current)
 
-- [ ] 微信读书（weread）数据抓取
-- [ ] Flomo 数据抓取
+- [x] 豆瓣全量数据抓取
+- [ ] 微信读书数据接入
+- [ ] Flomo 数据接入
+- [ ] 统一数据模型与存储层
 
-## Agent 个人信息平台可视化
+### Phase 2 - AI Agent
 
-- [ ] 统一数据模型（豆瓣 + 微信读书 + Flomo）
-- [ ] 个人信息看板：阅读统计、观影记录、想法时间线
-- [ ] 数据聚合与筛选
+- [ ] AI 对话接口（基于个人数据上下文）
+- [ ] 阅读偏好分析与推荐
+- [ ] 标签/分类智能整理
+- [ ] 跨平台数据关联（读书笔记 vs 影评 vs 日记）
 
-## 数据可视化
+### Phase 3 - 自动报告
 
-- [ ] 阅读趋势图表（月度/年度统计）
+- [ ] 周报/月报/年报自动生成
+- [ ] Markdown / PDF / Web 导出
+- [ ] 报告模板自定义
+
+### Phase 4 - 可视化看板
+
+- [ ] 个人信息看板（阅读统计、观影记录、想法时间线）
+- [ ] 阅读趋势图表（月度/年度）
 - [ ] 书影音评分分布
 - [ ] 标签词云与分类统计
 
-## AI 生成记录报告
+---
 
-- [ ] 基于抓取数据自动生成周报/月报/年报
-- [ ] AI 分析阅读偏好与推荐
-- [ ] 导出为 Markdown / PDF
+## 参考
 
-
-
-# 🤖行动
-
-## 1. 准备阶段
-
-拥有[豆瓣](https://www.douban.com/)和[Notion](https://www.notion.so/)账户。
-
-![image-20230612163511339](./assets/image-20230612163511339.png)
-
-## 2. 修改必要数据
-
-下载好源码后解压进入目录，执行以下步骤：（[点击下载](https://github.com/amlei/Use-NotionAPI/archive/refs/heads/main.zip)）
-
-1. 安装依赖
-
-```powershell
-pip install -r rerequirements.txt
-```
-
-
-
-2. 打开 `new_book.txt` 与 `new_video.txt` 更改你的 Notion 页面中最新的标记数据
-
-3. 打开 `.env` 文件，修改必要参数
-
-<img src="./assets/image-20240313172916768.png" alt="image-20240313172916768" style="zoom:25%;" />
-
-4. 运行 `main.py` 文件
-
-<img src="./assets/image-20240313172931685.png" alt="image-20240313172931685" style="zoom: 15%;" />
-
-![result](./assets/result.png)
-
-# 🔗其它链接
-
-[Notion API的使用——获取豆瓣书影数据更新入Notion数据库_哔哩哔哩](https://www.bilibili.com/video/BV15o4y1W7hw/?spm_id_from=333.999.0.0)
-
-[创建 Notion API](https://www.notion.so/my-integrations)
-
-[Notion API使用思路](https://www.notion.so/yapotato/Notion-API-ChatGPT-93ad50c4bcc34c608fdc1fe211d6b322?pvs=4)
+- [Notion API](https://www.notion.so/my-integrations)
+- [Notion API 使用教程 - Bilibili](https://www.bilibili.com/video/BV15o4y1W7hw/)
+- [Playwright](https://playwright.dev/python/)

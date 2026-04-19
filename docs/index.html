@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeInk AI</title>
+  <style>
+    :root {
+      --sky-50: #f0f9ff;
+      --sky-100: #e0f2fe;
+      --sky-200: #bae6fd;
+      --sky-300: #7dd3fc;
+      --sky-400: #38bdf8;
+      --sky-500: #0ea5e9;
+      --sky-600: #0284c7;
+      --sky-700: #0369a1;
+      --sky-800: #075985;
+      --sky-900: #0c4a6e;
+      --text: #1e293b;
+      --text-light: #475569;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+      color: var(--text);
+      background: var(--white);
+      line-height: 1.7;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; width: 100%; z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--sky-100);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    nav .logo {
+      font-size: 1.25rem; font-weight: 700; color: var(--sky-700);
+      text-decoration: none;
+    }
+    nav .links a {
+      color: var(--text-light); text-decoration: none; margin-left: 1.5rem;
+      font-size: 0.9rem; transition: color 0.2s;
+    }
+    nav .links a:hover { color: var(--sky-600); }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+      background: linear-gradient(170deg, var(--sky-100) 0%, var(--white) 50%, var(--sky-50) 100%);
+      padding: 6rem 2rem 4rem;
+    }
+    .hero h1 {
+      font-size: 3.5rem; font-weight: 800; color: var(--sky-800);
+      letter-spacing: -0.02em;
+    }
+    .hero .tagline {
+      font-size: 1.25rem; color: var(--text-light);
+      margin-top: 1rem; max-width: 560px;
+    }
+    .hero .cta {
+      margin-top: 2.5rem;
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    }
+    .btn {
+      display: inline-block; padding: 0.75rem 2rem; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--sky-500); color: var(--white);
+    }
+    .btn-primary:hover { background: var(--sky-600); }
+    .btn-outline {
+      border: 2px solid var(--sky-300); color: var(--sky-700);
+    }
+    .btn-outline:hover { background: var(--sky-50); }
+
+    /* Section */
+    section {
+      max-width: 960px; margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+    section h2 {
+      font-size: 2rem; font-weight: 700; color: var(--sky-800);
+      margin-bottom: 0.5rem;
+    }
+    section .subtitle {
+      color: var(--text-light); margin-bottom: 3rem;
+    }
+
+    /* Features */
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+    }
+    .feature-card {
+      background: var(--sky-50);
+      border: 1px solid var(--sky-100);
+      border-radius: 12px; padding: 2rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(14,165,233,0.12);
+    }
+    .feature-card .icon {
+      font-size: 2rem; margin-bottom: 1rem;
+    }
+    .feature-card h3 {
+      font-size: 1.1rem; color: var(--sky-800); margin-bottom: 0.5rem;
+    }
+    .feature-card p {
+      font-size: 0.9rem; color: var(--text-light);
+    }
+
+    /* Sources */
+    .sources {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .source-tag {
+      background: var(--sky-100); color: var(--sky-800);
+      padding: 0.5rem 1.25rem; border-radius: 999px;
+      font-size: 0.9rem; font-weight: 500;
+    }
+    .source-tag.done { background: var(--sky-200); }
+
+    /* Roadmap */
+    .timeline { position: relative; padding-left: 2rem; }
+    .timeline::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 2px; background: var(--sky-200);
+    }
+    .phase {
+      position: relative; margin-bottom: 2.5rem;
+    }
+    .phase::before {
+      content: ""; position: absolute; left: -2rem; top: 6px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--sky-400); border: 2px solid var(--white);
+      box-shadow: 0 0 0 2px var(--sky-200);
+    }
+    .phase.current::before { background: var(--sky-500); box-shadow: 0 0 0 3px var(--sky-300); }
+    .phase h3 { font-size: 1.1rem; color: var(--sky-800); }
+    .phase .label {
+      font-size: 0.8rem; color: var(--sky-500); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .phase ul {
+      margin-top: 0.5rem; padding-left: 1.25rem;
+      color: var(--text-light); font-size: 0.9rem;
+    }
+    .phase ul li { margin-bottom: 0.25rem; }
+
+    /* Footer */
+    footer {
+      text-align: center; padding: 3rem 2rem;
+      background: var(--sky-50);
+      border-top: 1px solid var(--sky-100);
+      color: var(--text-light); font-size: 0.85rem;
+    }
+    footer a { color: var(--sky-600); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2.5rem; }
+      nav .links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="#">LifeInk AI</a>
+  <div class="links">
+    <a href="#features">Core</a>
+    <a href="#sources">Data Sources</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="https://github.com/amlei/lifeink">GitHub</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>LifeInk AI</h1>
+  <p class="tagline">Personal AI Agent - 聚合书影音日记，用 AI 重新理解你的生活。</p>
+  <p style="color:var(--text-light); margin-top:1rem; max-width:520px; font-size:0.95rem;">
+    从豆瓣、微信读书、Flomo 等平台采集个人数据，通过 AI 对话分析、偏好洞察，自动生成周报/月报/年度总结。
+  </p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/amlei/lifeink">View on GitHub</a>
+    <a class="btn btn-outline" href="#roadmap">Roadmap</a>
+  </div>
+</div>
+
+<section id="features">
+  <h2>Core</h2>
+  <p class="subtitle">四大核心能力，让生活记录变成可理解的数据。</p>
+  <div class="features">
+    <div class="feature-card">
+      <div class="icon">&#128218;</div>
+      <h3>Data Aggregation</h3>
+      <p>统一采集多平台个人数据 -- 书影音、日记、想法，一处汇聚。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">&#129302;</div>
+      <h3>AI Chat</h3>
+      <p>基于个人数据与 AI 自由对话，获取洞察、回答和推荐。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">&#128196;</div>
+      <h3>Auto Reports</h3>
+      <p>周报、月报、年报自动生成，支持 Markdown / PDF / Web 导出。</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">&#128200;</div>
+      <h3>Visualization</h3>
+      <p>阅读趋势、评分分布、标签云、时间线看板，一目了然。</p>
+    </div>
+  </div>
+</section>
+
+<section id="sources">
+  <h2>Data Sources</h2>
+  <p class="subtitle">支持多平台数据接入，持续扩展中。</p>
+  <div class="sources">
+    <span class="source-tag done">Douban (Books / Movies / Games / Reviews / Notes)</span>
+    <span class="source-tag done">Notion Sync</span>
+    <span class="source-tag">WeRead</span>
+    <span class="source-tag">Flomo</span>
+  </div>
+</section>
+
+<section id="roadmap">
+  <h2>Roadmap</h2>
+  <p class="subtitle">从数据采集到 AI 驱动的个人洞察平台。</p>
+  <div class="timeline">
+    <div class="phase current">
+      <span class="label">Phase 1 - Current</span>
+      <h3>Data Collection</h3>
+      <ul>
+        <li>Douban full data scraping</li>
+        <li>WeRead integration</li>
+        <li>Flomo integration</li>
+        <li>Unified data model &amp; storage</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <span class="label">Phase 2</span>
+      <h3>AI Agent</h3>
+      <ul>
+        <li>AI chat interface (personal data context)</li>
+        <li>Reading preference analysis &amp; recommendations</li>
+        <li>Smart tagging &amp; categorization</li>
+        <li>Cross-platform data correlation</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <span class="label">Phase 3</span>
+      <h3>Auto Reports</h3>
+      <ul>
+        <li>Weekly / Monthly / Yearly auto generation</li>
+        <li>Markdown / PDF / Web export</li>
+        <li>Custom report templates</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <span class="label">Phase 4</span>
+      <h3>Dashboard</h3>
+      <ul>
+        <li>Personal info dashboard</li>
+        <li>Reading trend charts (monthly / yearly)</li>
+        <li>Rating distribution</li>
+        <li>Tag cloud &amp; category stats</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>LifeInk AI &mdash; <a href="https://github.com/amlei/lifeink">github.com/amlei/lifeink</a></p>
+</footer>
+
+</body>
+</html>
