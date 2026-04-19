@@ -24,14 +24,23 @@
 ├─assets - README.md文件
 │
 ├─function - 其它功能函数
-│  │  glo.py - 全局数据 
+│  │  glo.py - 全局数据
 │  │  spider.py - 爬取个人豆瓣数据
 │  │  __init__.py
 │
-└─icon - 图标
-        book.svg
-        movie.svg
-        video.svg
+├─icon - 图标
+│       book.svg
+│       movie.svg
+│       video.svg
+│
+├─docs - 文档
+│
+└─src - 新功能模块（独立 uv 项目，不影响原有实现）
+   └─feature
+      └─feature/community
+         ├─douban - 豆瓣数据抓取（Playwright）
+         ├─weread - 微信读书（待开发）
+         └─flomo  - Flomo（待开发）
 ```
 
 ---
@@ -85,6 +94,44 @@
 - [x] 图标
 - [x] 图像
 - [x] 评星
+
+## 新版抓取（`src/feature/`）
+
+基于 Playwright 的独立模块，使用 uv 管理依赖，不依赖原有 requests 方案。
+
+- [x] 自动登录检测（session 过期自动弹出二维码）
+- [x] 豆瓣：图书、影视、游戏、书评、日记、个人资料
+- [ ] 微信读书（weread）
+- [ ] Flomo
+
+详见 [src/feature/README.md](./src/feature/README.md)。
+
+---
+
+# 📋 Todo
+
+## 数据源
+
+- [ ] 微信读书（weread）数据抓取
+- [ ] Flomo 数据抓取
+
+## Agent 个人信息平台可视化
+
+- [ ] 统一数据模型（豆瓣 + 微信读书 + Flomo）
+- [ ] 个人信息看板：阅读统计、观影记录、想法时间线
+- [ ] 数据聚合与筛选
+
+## 数据可视化
+
+- [ ] 阅读趋势图表（月度/年度统计）
+- [ ] 书影音评分分布
+- [ ] 标签词云与分类统计
+
+## AI 生成记录报告
+
+- [ ] 基于抓取数据自动生成周报/月报/年报
+- [ ] AI 分析阅读偏好与推荐
+- [ ] 导出为 Markdown / PDF
 
 
 

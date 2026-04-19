@@ -65,4 +65,7 @@ last mark/
 test/
 tests/
 
-.claude
+.playwright
+.playwright-cli
+
+douban-login-qr.png
