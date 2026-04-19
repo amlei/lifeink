@@ -1,5 +1,5 @@
 from ..models.profile import Profile
-from .base import BaseScraper
+from .base import BaseScraper, clean
 
 
 class ProfileScraper(BaseScraper):
@@ -18,9 +18,9 @@ class ProfileScraper(BaseScraper):
         if infobox:
             img = infobox.query_selector("img")
             avatar = img.get_attribute("src") if img else None
-            bio = infobox.text_content().strip()
+            bio = clean(infobox.text_content())
 
         sig_el = self.page.query_selector("#edit_signature")
-        signature = sig_el.text_content().strip() if sig_el else None
+        signature = clean(sig_el.text_content()) if sig_el else None
 
         return Profile(user_id=self.user_id, avatar=avatar, bio=bio, signature=signature)

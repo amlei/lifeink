@@ -1,7 +1,7 @@
 import re
 
 from ..models.game import Game
-from .base import BaseScraper
+from .base import BaseScraper, clean
 
 
 def _parse_game_rating(class_name: str | None) -> int | None:
@@ -21,17 +21,17 @@ class GamesScraper(BaseScraper):
         games: list[Game] = []
         for el in elements:
             title_el = el.query_selector(".title a")
-            title = title_el.text_content().strip() if title_el else None
+            title = clean(title_el.text_content()) if title_el else None
             url = title_el.get_attribute("href") if title_el else None
             cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
             desc_el = el.query_selector(".desc")
-            desc = desc_el.text_content().strip() if desc_el else None
+            desc = clean(desc_el.text_content()) if desc_el else None
             rating_el = el.query_selector(".rating-star")
             rating_cls = rating_el.get_attribute("class") if rating_el else None
             date_el = el.query_selector(".date")
-            date = date_el.text_content().strip() if date_el else None
+            date = clean(date_el.text_content()) if date_el else None
             tags_el = el.query_selector(".tags")
-            tags = tags_el.text_content().replace("标签: ", "").strip() if tags_el else None
+            tags = clean(tags_el.text_content().replace("标签: ", "")) if tags_el else None
             comment = self._extract_game_comment(el)
 
             games.append(Game(

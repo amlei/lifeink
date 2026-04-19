@@ -1,8 +1,17 @@
+import re
 from typing import TypeVar
 
 from playwright.sync_api import Page
 
 T = TypeVar("T")
+
+
+def clean(text: str | None) -> str | None:
+    """Remove all whitespace. Return None for empty strings."""
+    if text is None:
+        return None
+    cleaned = re.sub(r"\s+", "", text)
+    return cleaned or None
 
 
 class BaseScraper:

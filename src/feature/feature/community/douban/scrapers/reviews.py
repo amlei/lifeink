@@ -1,7 +1,7 @@
 import re
 
 from ..models.review import Review
-from .base import BaseScraper
+from .base import BaseScraper, clean
 
 _ITEMS_PER_PAGE = 10
 
@@ -22,7 +22,7 @@ class ReviewsScraper(BaseScraper):
             subject_url = subject_a.get_attribute("href") if subject_a else None
             subject_img_url = subject_img.get_attribute("src") if subject_img else None
             h2a = el.query_selector("h2 a")
-            review_title = h2a.text_content().strip() if h2a else None
+            review_title = clean(h2a.text_content()) if h2a else None
             review_url = h2a.get_attribute("href") if h2a else None
             all_text = el.text_content() or ""
             m = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", all_text)

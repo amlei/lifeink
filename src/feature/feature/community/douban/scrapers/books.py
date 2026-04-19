@@ -1,7 +1,7 @@
 import re
 
 from ..models.book import Book
-from .base import BaseScraper
+from .base import BaseScraper, clean
 
 _ITEMS_PER_PAGE = 15
 
@@ -21,7 +21,7 @@ def _extract_country(author: str | None) -> tuple[str | None, str | None]:
         return None, None
     m = re.match(r"[\[【](.+?)[\]】]\s*(.*)", author)
     if m:
-        return m.group(1), m.group(2)
+        return m.group(1), m.group(2).strip() or None
     return None, author
 
 
@@ -52,19 +52,19 @@ class BooksScraper(BaseScraper):
         books: list[Book] = []
         for el in elements:
             title_el = el.query_selector("h2 a")
-            title = title_el.text_content().replace("\n", " ").strip() if title_el else None
+            title = clean(title_el.text_content()) if title_el else None
             url = title_el.get_attribute("href") if title_el else None
             cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
-            pub = _parse_pub(el.query_selector(".pub").text_content().strip()) if el.query_selector(".pub") else {}
+            pub = _parse_pub(clean(el.query_selector(".pub").text_content()) or "") if el.query_selector(".pub") else {}
             country, author = _extract_country(pub.get("author"))
             rating_el = el.query_selector("[class*=rating]")
             rating_cls = rating_el.get_attribute("class") if rating_el else None
             date_text = el.query_selector(".date").text_content() if el.query_selector(".date") else None
             date, status = _parse_date_status(date_text)
             tags_el = el.query_selector(".tags")
-            tags = tags_el.text_content().replace("标签: ", "").strip() if tags_el else None
+            tags = clean(tags_el.text_content().replace("标签: ", "")) if tags_el else None
             comment_el = el.query_selector(".comment")
-            comment = comment_el.text_content().strip() if comment_el else None
+            comment = clean(comment_el.text_content()) if comment_el else None
 
             books.append(Book(
                 title=title, url=url, cover=cover,
