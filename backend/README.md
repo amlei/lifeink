@@ -1,6 +1,6 @@
-# Feature Module
+# Backend
 
-基于 Playwright 的社区数据抓取模块，与项目原有实现隔离，独立管理依赖。
+基于 Playwright 的社区数据抓取模块，独立管理依赖。
 
 ## 环境要求
 
@@ -10,7 +10,7 @@
 ## 快速开始
 
 ```bash
-cd src/feature
+cd backend
 
 # 安装依赖
 uv sync
@@ -19,13 +19,13 @@ uv sync
 uv run python -m playwright install chromium
 
 # 抓取数据（自动判断登录状态，session 过期会弹出二维码）
-uv run python -m feature --type books --pages 3
+uv run python __main__.py --type books --pages 3
 ```
 
 ## 命令行
 
 ```bash
-uv run python -m feature --type <类型> [--pages <页数>]
+uv run python __main__.py --type <类型> [--pages <页数>]
 ```
 
 | 参数 | 说明 | 默认值 |
@@ -44,28 +44,27 @@ uv run python -m feature --type <类型> [--pages <页数>]
 ## 项目结构
 
 ```
-feature/
+backend/
   pyproject.toml
-  feature/
-    __main__.py                    # CLI 入口
-    community/
-      douban/
-        client.py                  # DoubanClient（上下文管理器）
-        session.py                 # Session 管理（加载/保存 cookies）
-        login.py                   # 二维码登录流程
-        models/                    # Pydantic 数据模型
-          book.py, movie.py, game.py, review.py, note.py, profile.py
-        scrapers/                  # 页面抓取器
-          base.py                  # 分页基类
-          books.py, movies.py, games.py, reviews.py, notes.py, profile.py
-      weread/                      # 微信读书（待开发）
-      flomo/                       # Flomo（待开发）
+  __main__.py                      # CLI 入口
+  community/
+    douban/
+      client.py                    # DoubanClient（上下文管理器）
+      session.py                   # Session 管理（加载/保存 cookies）
+      login.py                     # 二维码登录流程
+      models/                      # Pydantic 数据模型
+        book.py, movie.py, game.py, review.py, note.py, profile.py
+      scrapers/                    # 页面抓取器
+        base.py                    # 分页基类
+        books.py, movies.py, games.py, reviews.py, notes.py, profile.py
+    weread/                        # 微信读书（待开发）
+    flomo/                         # Flomo（待开发）
 ```
 
 ## 编程使用
 
 ```python
-from feature.community.douban import DoubanClient
+from community.douban import DoubanClient
 
 with DoubanClient() as client:
     client.ensure_ready()
