@@ -7,6 +7,7 @@ class Game(BaseModel):
     cover: str | None = None
     desc: str | None = None
     rating: int | None = None
-    date: str | None = None
-    tags: str | None = None
+    release_date: str | None = None
+    play_date: str | None = None
+    tags: list[str] | None = None
     comment: str | None = None

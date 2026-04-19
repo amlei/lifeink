@@ -21,7 +21,7 @@ class GamesScraper(BaseScraper):
         games: list[Game] = []
         for el in elements:
             title_el = el.query_selector(".title a")
-            title = clean(title_el.text_content()) if title_el else None
+            title = clean(title_el.text_content()).split("/")[0] if title_el else None
             url = title_el.get_attribute("href") if title_el else None
             cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
             desc_el = el.query_selector(".desc")
@@ -29,15 +29,15 @@ class GamesScraper(BaseScraper):
             rating_el = el.query_selector(".rating-star")
             rating_cls = rating_el.get_attribute("class") if rating_el else None
             date_el = el.query_selector(".date")
-            date = clean(date_el.text_content()) if date_el else None
+            play_date = clean(date_el.text_content()) if date_el else None
             tags_el = el.query_selector(".tags")
-            tags = clean(tags_el.text_content().replace("标签: ", "")) if tags_el else None
+            tags = tags_el.text_content().replace("标签: ", "").split() if tags_el else None
             comment = self._extract_game_comment(el)
 
             games.append(Game(
                 title=title, url=url, cover=cover,
                 desc=desc, rating=_parse_game_rating(rating_cls),
-                date=date, tags=tags, comment=comment,
+                play_date=play_date, tags=tags, comment=comment,
             ))
         return games
 

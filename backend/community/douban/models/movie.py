@@ -5,8 +5,8 @@ class Movie(BaseModel):
     title: str
     url: str
     cover: str | None = None
-    date_info: str | None = None
+    release_date: str | None = None
     rating: int | None = None
-    date: str | None = None
-    tags: str | None = None
+    watch_date: str | None = None
+    tags: list[str] | None = None
     comment: str | None = None

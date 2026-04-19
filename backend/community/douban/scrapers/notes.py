@@ -12,7 +12,7 @@ class NotesScraper(BaseScraper):
         notes: list[Note] = []
         for el in elements:
             a = el.query_selector("a")
-            title = clean(a.text_content()) if a else None
+            title = clean(a.text_content()).split("/")[0] if a else None
             url = a.get_attribute("href") if a else None
             notes.append(Note(title=title, url=url))
         return notes
