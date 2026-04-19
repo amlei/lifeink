@@ -1,3 +1,5 @@
+import json
+import time
 from pathlib import Path
 
 from playwright.sync_api import BrowserContext
@@ -5,6 +7,7 @@ from playwright.sync_api import BrowserContext
 
 _STATE_FILENAME = "douban-state.json"
 _PLAYWRIGHT_DIR = ".playwright"
+_AUTH_COOKIE = "dbcl2"
 
 
 def _resolve_project_root() -> Path:
@@ -31,11 +34,23 @@ class SessionManager:
 
     @property
     def has_valid_session(self) -> bool:
-        return self._state_path.is_file() and self._state_path.stat().st_size > 0
+        """Check if state file exists and the auth cookie has not expired."""
+        if not self._state_path.is_file() or self._state_path.stat().st_size == 0:
+            return False
+        try:
+            data = json.loads(self._state_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return False
+        now = time.time()
+        for cookie in data.get("cookies", []):
+            if cookie.get("name") == _AUTH_COOKIE:
+                expires = cookie.get("expires", -1)
+                return expires > now
+        return False
 
     def get_storage_state(self) -> str | None:
         """Return path string for browser.new_context(storage_state=...), or None."""
-        if self.has_valid_session:
+        if self._state_path.is_file() and self._state_path.stat().st_size > 0:
             return str(self._state_path)
         return None
 
