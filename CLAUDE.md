@@ -81,3 +81,4 @@ Before running, the following must be configured in `.env` file:
 - The app includes 5-second delays between pages to respect rate limits
 - JSON templates in `json/` folder define the Notion database schema - modify these to match your database structure
 - The current `requirements.txt` has encoding issues and may need manual recreation
+- Strictly prohibited from using emojis.

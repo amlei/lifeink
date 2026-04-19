@@ -280,7 +280,7 @@ if __name__ == '__main__':
     logger.add(f"./log/{datetime.now().strftime('%Y-%m-%d')}.log")
     logger.info("Start Application.")
     tic = time()
-    main(1)
+    main(0)
     toc = time()
     logger.info("End task.")
     logger.info(f"执行时间：{toc - tic}")

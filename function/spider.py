@@ -92,14 +92,15 @@ class Book:
         return self.Authors
 
     def other(self) -> tuple[list[str | Any], list[str | Any], list[str | Any]]:
-        for div in self.request.find_all("span", {"class": "tags"}):
-            self.Tags.append(div.text.split(" ")[1:])
+        for item in self.request.find_all("li", class_="subject-item"):
+            tag = item.find("span", {"class": "tags"})
+            self.Tags.append(tag.text.split(" ")[1:] if tag else [])
 
-        for div in self.request.find_all("span", {"class": "date"}):
-            self.Dates.append(div.text.replace("\n      读过", ""))
+            date = item.find("span", {"class": "date"})
+            self.Dates.append(date.text.replace("\n      读过", "") if date else "")
 
-        for div in self.request.find_all("p", {"class": "comment"}):
-            self.Comments.append(div.text.strip())
+            comment = item.find("p", {"class": "comment"})
+            self.Comments.append(comment.text.strip() if comment else "")
 
         logger.info(f"Other Info: {self.Tags}, {self.Dates}, {self.Comments}")
         return self.Tags, self.Dates, self.Comments
@@ -156,16 +157,13 @@ class Video(Book):
     def other(self) -> tuple:
         # 上映日期
         self.Release = [i.text.strip().split("/")[0][0:10] for i in self.request.find_all("li", class_="intro")]
-        # 观看日期
-        watched_date = self.request.find_all('span', {'class': 'date'})
-        # 标签
-        tags = self.request.find_all('span', {'class': 'tags'})
-        # 短评
-        comment = self.request.find_all('span', {'class': 'comment'})
 
-        for i in range(Glo.MAXNum):
-            self.Dates.append(watched_date[i].text)
-            self.Tags.append(tags[i].text.strip("标签: ").split(" "))
+        for item in self.request.find_all("div", class_="item"):
+            date = item.find('span', {'class': 'date'})
+            self.Dates.append(date.text if date else "")
+
+            tag = item.find('span', {'class': 'tags'})
+            self.Tags.append(tag.text.strip("标签: ").split(" ") if tag else [])
 
         return self.Release, self.Dates, self.Tags
 
