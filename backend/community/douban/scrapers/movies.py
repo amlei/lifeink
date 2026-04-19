@@ -18,25 +18,25 @@ class MoviesScraper(BaseScraper):
         movies: list[Movie] = []
         for el in elements:
             title_el = el.query_selector(".title a")
-            title = clean(title_el.text_content()) if title_el else None
+            title = clean(title_el.text_content()).split("/")[0] if title_el else None
             url = title_el.get_attribute("href") if title_el else None
             cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
             intro_el = el.query_selector(".intro")
             intro_text = clean(intro_el.text_content()) if intro_el else None
-            date_info = intro_text.split(" / ")[0] if intro_text else None
+            date_info = intro_text.split("/")[0].split("(")[0] if intro_text else None
             rating_el = el.query_selector("[class*=rating]")
             rating_cls = rating_el.get_attribute("class") if rating_el else None
             date_el = el.query_selector(".date")
             date = clean(date_el.text_content()) if date_el else None
             tags_el = el.query_selector(".tags")
-            tags = clean(tags_el.text_content().replace("标签: ", "")) if tags_el else None
+            tags = tags_el.text_content().replace("标签: ", "").split() if tags_el else None
             comment_el = el.query_selector(".comment")
             comment = clean(comment_el.text_content()) if comment_el else None
 
             movies.append(Movie(
                 title=title, url=url, cover=cover,
-                date_info=date_info,
+                release_date=date_info,
                 rating=_parse_rating(rating_cls),
-                date=date, tags=tags, comment=comment,
+                watch_date=date, tags=tags, comment=comment,
             ))
         return movies

@@ -12,7 +12,7 @@ class Book(BaseModel):
     pub_date: str | None = None
     price: str | None = None
     rating: int | None = None
-    date: str | None = None
+    read_date: str | None = None
     status: str | None = None
-    tags: str | None = None
+    tags: list[str] | None = None
     comment: str | None = None
