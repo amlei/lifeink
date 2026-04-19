@@ -84,7 +84,11 @@ class DoubanClient:
         self._user_id = m.group(1)
 
     def ensure_ready(self, qr_output_dir: Path | None = None) -> None:
-        """Ensure session is valid. Auto-login if needed."""
+        """Ensure session is valid. Skip login if auth cookie is still valid."""
+        if self._session.has_valid_session:
+            self._ensure_user_id()
+            return
+
         self._page.goto("https://www.douban.com/")
         self._page.wait_for_load_state("domcontentloaded")
         login = DoubanLogin(self._page, qr_output_dir)
