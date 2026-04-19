@@ -82,3 +82,4 @@ Before running, the following must be configured in `.env` file:
 - JSON templates in `json/` folder define the Notion database schema - modify these to match your database structure
 - The current `requirements.txt` has encoding issues and may need manual recreation
 - Strictly prohibited from using emojis.
+- All files created for temporary use shall be placed in the tmp/ directory.
