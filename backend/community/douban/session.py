@@ -1,13 +1,20 @@
 import json
 import time
+from http.cookiejar import Cookie
 from pathlib import Path
 
 from playwright.sync_api import BrowserContext
+
+import requests
 
 
 _STATE_FILENAME = "douban-state.json"
 _PLAYWRIGHT_DIR = ".playwright"
 _AUTH_COOKIE = "dbcl2"
+_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+)
 
 
 def _resolve_project_root() -> Path:
@@ -58,3 +65,42 @@ class SessionManager:
         """Persist browser context state to disk."""
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
         context.storage_state(path=str(self._state_path))
+
+    def build_http_session(self) -> requests.Session:
+        """Build a requests.Session with cookies and headers from saved state."""
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": _USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        })
+
+        if not self._state_path.is_file():
+            return session
+
+        try:
+            data = json.loads(self._state_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return session
+
+        for c in data.get("cookies", []):
+            jar_cookie = Cookie(
+                version=0,
+                name=c["name"],
+                value=c["value"],
+                port=None,
+                port_specified=False,
+                domain=c.get("domain", ""),
+                domain_specified=bool(c.get("domain")),
+                domain_initial_dot=c.get("domain", "").startswith("."),
+                path=c.get("path", "/"),
+                path_specified=True,
+                secure=c.get("secure", False),
+                expires=int(c.get("expires", -1)),
+                discard=False,
+                comment=None,
+                comment_url=None,
+                rest={},
+            )
+            session.cookies.set_cookie(jar_cookie)
+
+        return session

@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+
 from ..models.profile import Profile
 from .base import BaseScraper, clean
 
@@ -9,18 +11,17 @@ class ProfileScraper(BaseScraper):
 
     def scrape(self, max_pages: int = 1) -> Profile:
         url = self._url(1)
-        self.page.goto(url)
-        self.page.wait_for_load_state("domcontentloaded")
+        soup = self._fetch_soup(url)
 
-        infobox = self.page.query_selector(".infobox")
+        infobox = soup.select_one(".infobox")
         avatar = None
         bio = None
         if infobox:
-            img = infobox.query_selector("img")
-            avatar = img.get_attribute("src") if img else None
-            bio = clean(infobox.text_content())
+            img = infobox.select_one("img")
+            avatar = img.get("src") if img else None
+            bio = clean(infobox.get_text())
 
-        sig_el = self.page.query_selector("#edit_signature")
-        signature = clean(sig_el.text_content()) if sig_el else None
+        sig_el = soup.select_one("#edit_signature")
+        signature = clean(sig_el.get_text()) if sig_el else None
 
         return Profile(user_id=self.user_id, avatar=avatar, bio=bio, signature=signature)

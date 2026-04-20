@@ -1,7 +1,10 @@
+import random
 import re
+import time
 from typing import TypeVar
 
-from playwright.sync_api import Page
+import requests
+from bs4 import BeautifulSoup
 
 T = TypeVar("T")
 
@@ -17,13 +20,13 @@ def clean(text: str | None) -> str | None:
 class BaseScraper:
     """Base class for Douban scrapers with pagination support."""
 
-    def __init__(self, page: Page, user_id: str):
-        self._page = page
+    def __init__(self, http: requests.Session, user_id: str):
+        self._http = http
         self._user_id = user_id
 
     @property
-    def page(self) -> Page:
-        return self._page
+    def http(self) -> requests.Session:
+        return self._http
 
     @property
     def user_id(self) -> str:
@@ -32,33 +35,39 @@ class BaseScraper:
     def _url(self, page_num: int) -> str:
         raise NotImplementedError
 
-    def _parse_page(self) -> list:
+    def _parse_page(self, soup: BeautifulSoup) -> list:
         raise NotImplementedError
 
-    def _get_total_pages(self) -> int:
+    def _get_total_pages(self, soup: BeautifulSoup) -> int:
         """Read total pages from .paginator (last link number)."""
-        paginator = self._page.query_selector(".paginator")
+        paginator = soup.select_one(".paginator")
         if not paginator:
             return 1
-        links = paginator.query_selector_all("a")
+        links = paginator.select("a")
         if not links:
             return 1
-        last_text = links[-1].inner_text().strip()
+        last_text = links[-1].get_text(strip=True)
         try:
             return int(last_text)
         except ValueError:
             return 1
 
+    def _fetch_soup(self, url: str) -> BeautifulSoup:
+        resp = self._http.get(url)
+        resp.raise_for_status()
+        return BeautifulSoup(resp.text, "html.parser")
+
     def scrape(self, max_pages: int = 1) -> list:
         items: list = []
+        effective_max = max_pages
         for page_num in range(1, max_pages + 1):
             url = self._url(page_num)
-            self._page.goto(url)
-            self._page.wait_for_load_state("domcontentloaded")
+            soup = self._fetch_soup(url)
             if page_num == 1:
-                total_pages = self._get_total_pages()
+                total_pages = self._get_total_pages(soup)
                 effective_max = min(max_pages, total_pages)
-            items.extend(self._parse_page())
+            items.extend(self._parse_page(soup))
             if page_num >= effective_max:
                 break
+            time.sleep(random.uniform(3, 6))
         return items
