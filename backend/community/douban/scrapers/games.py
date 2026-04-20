@@ -1,5 +1,7 @@
 import re
 
+from bs4 import BeautifulSoup
+
 from ..models.game import Game
 from .base import BaseScraper, clean
 
@@ -16,22 +18,23 @@ class GamesScraper(BaseScraper):
     def _url(self, page_num: int) -> str:
         return f"https://www.douban.com/people/{self.user_id}/games?action=collect"
 
-    def _parse_page(self) -> list[Game]:
-        elements = self.page.query_selector_all(".common-item")
+    def _parse_page(self, soup: BeautifulSoup) -> list[Game]:
+        elements = soup.select(".common-item")
         games: list[Game] = []
         for el in elements:
-            title_el = el.query_selector(".title a")
-            title = clean(title_el.text_content()).split("/")[0] if title_el else None
-            url = title_el.get_attribute("href") if title_el else None
-            cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
-            desc_el = el.query_selector(".desc")
-            desc = clean(desc_el.text_content()) if desc_el else None
-            rating_el = el.query_selector(".rating-star")
-            rating_cls = rating_el.get_attribute("class") if rating_el else None
-            date_el = el.query_selector(".date")
-            play_date = clean(date_el.text_content()) if date_el else None
-            tags_el = el.query_selector(".tags")
-            tags = tags_el.text_content().replace("标签: ", "").split() if tags_el else None
+            title_el = el.select_one(".title a")
+            title = clean(title_el.get_text()).split("/")[0] if title_el else None
+            url = title_el.get("href") if title_el else None
+            img = el.select_one(".pic img")
+            cover = img.get("src") if img else None
+            desc_el = el.select_one(".desc")
+            desc = clean(desc_el.get_text()) if desc_el else None
+            rating_el = el.select_one(".rating-star")
+            rating_cls = " ".join(rating_el.get("class", [])) if rating_el else None
+            date_el = el.select_one(".date")
+            play_date = clean(date_el.get_text()) if date_el else None
+            tags_el = el.select_one(".tags")
+            tags = tags_el.get_text().replace("标签: ", "").split() if tags_el else None
             comment = self._extract_game_comment(el)
 
             games.append(Game(
@@ -43,13 +46,14 @@ class GamesScraper(BaseScraper):
 
     @staticmethod
     def _extract_game_comment(el) -> str | None:
-        content = el.query_selector(".content")
+        content = el.select_one(".content")
         if not content:
             return None
-        for child in content.query_selector_all(":scope > div"):
-            cls = child.get_attribute("class") or ""
-            if "title" not in cls and "desc" not in cls and "user-operation" not in cls:
-                text = child.text_content().strip()
+        for child in content.select(":scope > div"):
+            cls = child.get("class", [])
+            cls_str = " ".join(cls) if isinstance(cls, list) else str(cls)
+            if "title" not in cls_str and "desc" not in cls_str and "user-operation" not in cls_str:
+                text = child.get_text(strip=True)
                 if text:
                     return text
         return None

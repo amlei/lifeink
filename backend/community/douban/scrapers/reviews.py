@@ -1,5 +1,7 @@
 import re
 
+from bs4 import BeautifulSoup
+
 from ..models.review import Review
 from .base import BaseScraper, clean
 
@@ -12,19 +14,19 @@ class ReviewsScraper(BaseScraper):
         start = (page_num - 1) * _ITEMS_PER_PAGE
         return f"https://www.douban.com/people/{self.user_id}/reviews?start={start}"
 
-    def _parse_page(self) -> list[Review]:
-        elements = self.page.query_selector_all(".review-item")
+    def _parse_page(self, soup: BeautifulSoup) -> list[Review]:
+        elements = soup.select(".review-item")
         reviews: list[Review] = []
         for el in elements:
-            subject_img = el.query_selector(".subject-img img")
-            subject_title = subject_img.get_attribute("title") if subject_img else None
-            subject_a = el.query_selector(".subject-img")
-            subject_url = subject_a.get_attribute("href") if subject_a else None
-            subject_img_url = subject_img.get_attribute("src") if subject_img else None
-            h2a = el.query_selector("h2 a")
-            review_title = clean(h2a.text_content()) if h2a else None
-            review_url = h2a.get_attribute("href") if h2a else None
-            all_text = el.text_content() or ""
+            subject_img = el.select_one(".subject-img img")
+            subject_title = subject_img.get("title") if subject_img else None
+            subject_a = el.select_one(".subject-img")
+            subject_url = subject_a.get("href") if subject_a else None
+            subject_img_url = subject_img.get("src") if subject_img else None
+            h2a = el.select_one("h2 a")
+            review_title = clean(h2a.get_text()) if h2a else None
+            review_url = h2a.get("href") if h2a else None
+            all_text = el.get_text() or ""
             m = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", all_text)
             date = m.group(1) if m else None
 

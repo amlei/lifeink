@@ -1,5 +1,7 @@
 import re
 
+from bs4 import BeautifulSoup
+
 from ..models.book import Book
 from .base import BaseScraper, clean
 
@@ -51,24 +53,27 @@ class BooksScraper(BaseScraper):
         start = (page_num - 1) * _ITEMS_PER_PAGE
         return f"https://book.douban.com/people/{self.user_id}/collect?start={start}"
 
-    def _parse_page(self) -> list[Book]:
-        elements = self.page.query_selector_all(".subject-item")
+    def _parse_page(self, soup: BeautifulSoup) -> list[Book]:
+        elements = soup.select(".subject-item")
         books: list[Book] = []
         for el in elements:
-            title_el = el.query_selector("h2 a")
-            title = clean(title_el.text_content()).split("/")[0] if title_el else None
-            url = title_el.get_attribute("href") if title_el else None
-            cover = (img.get_attribute("src") if (img := el.query_selector(".pic img")) else None)
-            pub = _parse_pub(clean(el.query_selector(".pub").text_content()) or "") if el.query_selector(".pub") else {}
+            title_el = el.select_one("h2 a")
+            title = clean(title_el.get_text()).split("/")[0] if title_el else None
+            url = title_el.get("href") if title_el else None
+            img = el.select_one(".pic img")
+            cover = img.get("src") if img else None
+            pub_el = el.select_one(".pub")
+            pub = _parse_pub(clean(pub_el.get_text()) or "") if pub_el else {}
             country, author = _extract_country(pub.get("author"))
-            rating_el = el.query_selector("[class*=rating]")
-            rating_cls = rating_el.get_attribute("class") if rating_el else None
-            date_text = el.query_selector(".date").text_content() if el.query_selector(".date") else None
+            rating_el = el.select_one("[class*=rating]")
+            rating_cls = " ".join(rating_el.get("class", [])) if rating_el else None
+            date_el = el.select_one(".date")
+            date_text = date_el.get_text() if date_el else None
             read_date, status = _parse_date_status(date_text)
-            tags_el = el.query_selector(".tags")
-            tags = tags_el.text_content().replace("标签: ", "").split() if tags_el else None
-            comment_el = el.query_selector(".comment")
-            comment = clean(comment_el.text_content()) if comment_el else None
+            tags_el = el.select_one(".tags")
+            tags = tags_el.get_text().replace("标签: ", "").split() if tags_el else None
+            comment_el = el.select_one(".comment")
+            comment = clean(comment_el.get_text()) if comment_el else None
 
             books.append(Book(
                 title=title, url=url, cover=cover,
