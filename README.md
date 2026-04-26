@@ -21,11 +21,12 @@ LifeInk AI 从豆瓣、微信读书、Flomo 等平台采集个人的阅读、影
 - [x] 自动登录检测（session 过期弹二维码）
 - [x] 翻页数据提取、图标/封面/评分
 - [x] 本地 SQLite 数据库存储（SQLAlchemy async）
+- [x] 绑定后自动抓取图书和影视数据
 
 ### AI 对话
 
 - [x] 前端聊天界面（React + Vite）
-- [x] 流式响应（StreamingResponse）
+- [x] 流式响应（StreamingResponse + AI SDK）
 - [ ] 接入 LLM 提供商
 
 ---
@@ -41,8 +42,8 @@ json/                # Notion 数据库模板
 icon/                # 页面图标
 
 backend/             # API 服务 + 数据抓取（uv 独立项目）
-  src/api.py         # FastAPI 应用
-  src/api/bind.py    # 平台绑定（WebSocket 实时推送）
+  src/api.py         # FastAPI 应用（路由、WebSocket）
+  src/api/douban.py  # 豆瓣平台绑定逻辑（AsyncBindManager）
   src/community/     # 社区数据源
     douban/          # 豆瓣（Playwright 登录 + requests 抓取）
     weread/          # 微信读书（待开发）
@@ -51,6 +52,9 @@ backend/             # API 服务 + 数据抓取（uv 独立项目）
   tests/             # pytest 测试
 
 frontend/            # React 聊天界面（Bun + Vite）
+  src/api/douban.ts  # 豆瓣 API 集成（REST + WebSocket）
+  src/components/    # UI 组件（Sidebar, ChatPanel, ProfileModal 等）
+  src/hooks/         # 自定义 Hook（useChatStore）
 ```
 
 ---

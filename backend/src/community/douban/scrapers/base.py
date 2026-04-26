@@ -57,16 +57,23 @@ class BaseScraper:
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
 
-    def scrape(self, max_pages: int = 1) -> list:
+    def scrape(self, max_pages: int = 1, existing_urls: set[str] | None = None) -> list:
         items: list = []
-        effective_max = max_pages
-        for page_num in range(1, max_pages + 1):
+        total_pages = 1
+        for page_num in range(1, 100_000):
             url = self._url(page_num)
             soup = self._fetch_soup(url)
             if page_num == 1:
                 total_pages = self._get_total_pages(soup)
-                effective_max = min(max_pages, total_pages)
-            items.extend(self._parse_page(soup))
+            effective_max = min(max_pages, total_pages) if max_pages > 0 else total_pages
+            page_items = self._parse_page(soup)
+            if existing_urls is not None:
+                new_items = [i for i in page_items if getattr(i, "url", None) not in existing_urls]
+                items.extend(new_items)
+                if len(new_items) < len(page_items):
+                    break
+            else:
+                items.extend(page_items)
             if page_num >= effective_max:
                 break
             time.sleep(random.uniform(3, 6))

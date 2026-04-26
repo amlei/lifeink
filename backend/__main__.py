@@ -7,7 +7,7 @@ from src.community.douban import DoubanClient
 from db.engine import async_session_factory, get_default_user
 from db.repository import CommunityMetaRepo
 
-TYPES = ("profile", "books", "movies", "games", "reviews", "notes")
+TYPES = ("profile", "books", "movies", "games", "reviews", "notes", "browser")
 
 
 def main():
@@ -17,6 +17,10 @@ def main():
     args = parser.parse_args()
 
     state_json = _load_session_state()
+
+    if args.type == "browser":
+        _open_browser(state_json)
+        return
 
     with DoubanClient(headless=False, state_json=state_json) as client:
         client.ensure_ready()
@@ -36,6 +40,38 @@ def _load_session_state() -> str | None:
             state, _ = await CommunityMetaRepo.get_session_state(db, user.id, "douban")
             return state
     return asyncio.run(_get())
+
+
+def _open_browser(state_json: str | None) -> None:
+    from pathlib import Path
+    from playwright.sync_api import sync_playwright
+
+    if not state_json:
+        print("No saved session. Bind Douban first via the frontend.")
+        return
+
+    state_file = Path(__file__).resolve().parent / "tmp" / "douban-state-browser.json"
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    state_file.write_text(state_json, encoding="utf-8")
+
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=False, channel="msedge")
+    context = browser.new_context(storage_state=str(state_file))
+    page = context.new_page()
+    page.goto("https://www.douban.com/")
+    page.wait_for_load_state("domcontentloaded")
+    print(f"Browser opened. User ID detected from session cookies.")
+    print("Press Ctrl+C to close the browser.")
+
+    try:
+        page.pause()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        context.close()
+        browser.close()
+        pw.stop()
+        state_file.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

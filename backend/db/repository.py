@@ -250,11 +250,17 @@ class DataRepo:
                 user_id=user_id,
                 title=item.title,
                 url=item.url,
+                date=item.date,
+                location=item.location,
+                body=item.body,
             )
             stmt = stmt.on_conflict_do_update(
                 index_elements=["user_id", "url"],
                 set_={
                     "title": stmt.excluded.title,
+                    "date": stmt.excluded.date,
+                    "location": stmt.excluded.location,
+                    "body": stmt.excluded.body,
                 },
             )
             await db.execute(stmt)

@@ -15,11 +15,12 @@ cd backend
 uv sync
 uv run python -m playwright install chromium   # first time only
 uv run python __main__.py --type books --pages 3   # CLI scraper
+uv run python __main__.py --type browser           # open interactive browser with saved session
 uv run python src/api.py                           # start API server (port 8000)
 uv run pytest tests/ -v -s                         # run tests
 ```
 
-Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`.
+Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`, `browser`.
 
 ### Frontend (React + Vite + Bun)
 
@@ -53,12 +54,14 @@ No test suite or linter for the root project.
 
 Independent `uv`-managed project (Python >=3.12). Three layers:
 
-**API layer** (`src/api.py`, `src/api/bind.py`):
+**API layer** (`src/api.py`, `src/api/douban.py`):
 - FastAPI app with CORS middleware. Started via `uvicorn` on port 8000.
 - `POST /api/chat` -- streaming text response (mock LLM, character-by-character).
-- `POST /api/communityBinding` -- platform bind/unbind/status/refresh (query params: `action`, `platform`).
-- `WS /api/communityBinding/ws` -- WebSocket push of binding progress (QR code, status transitions, profile).
-- `AsyncBindManager` runs Playwright login in a thread pool, notifying the WebSocket via `asyncio.Event`.
+- `POST /api/community/bind` -- platform bind/unbind/status/refresh (query params: `action`, `platform`).
+- `POST /api/community/sync` -- trigger data sync for a bound platform.
+- `WS /api/community/ws` -- WebSocket push of binding/sync progress (QR code, status transitions, profile).
+- `GET /api/community/data` -- retrieve books, movies, notes for a platform.
+- `AsyncBindManager` (in `src/api/douban.py`) runs Playwright login in a thread pool, notifying the WebSocket via `asyncio.Event`.
 
 **Scraper layer** (`src/community/`):
 - `DoubanClient` (`src/community/douban/client.py`): context manager that uses Playwright for login (QR code) and `requests` for data scraping. Auto-detects `user_id` from `/mine/` redirect.
@@ -71,7 +74,7 @@ Independent `uv`-managed project (Python >=3.12). Three layers:
 **Database layer** (`db/`):
 - SQLAlchemy async ORM over SQLite (`aiosqlite`). DB file: `backend/db/data/lifeink.db`.
 - `engine.py`: async engine, session factory, `get_default_user()`, `init_db()`.
-- `models.py`: ORM models -- `User`, `CommunityMeta` (platform binding + session state), `BookRow`, `MovieRow`, `GameRow`, `ReviewRow`, `NoteRow`. Each row model has a `to_pydantic()` method.
+- `models.py`: ORM models -- `User`, `CommunityMeta` (platform binding + session state), `BookRow`, `MovieRow`, `GameRow`, `ReviewRow`, `NoteRow`. Each row model has a `to_api_dict()` method.
 - `repository.py`: `CommunityMetaRepo` (binding/session CRUD) and `DataRepo` (upsert + get for each data type, using SQLite `ON CONFLICT DO UPDATE`).
 - Auto-creates a default user (`amlei`) on `init_db()`.
 
@@ -81,6 +84,9 @@ Bun-managed React 19 + TypeScript + Vite.
 
 - `App.tsx` renders `Sidebar`, `ChatPanel`/`WelcomeScreen`, and a right panel placeholder. `ProfileModal` for settings.
 - `useChatStore` hook manages chat state (messages, history, active chat) with in-memory `Map` cache.
+- `ChatPanel` uses `@ai-sdk/react`'s `useChat` hook with `TextStreamChatTransport` for streaming.
+- `api/douban.ts` provides REST and WebSocket functions for platform binding and data access.
+- `community/types/bind.ts` defines shared types: `BindStatus`, `PollResult`, `BookItem`, `MovieItem`, `NoteItem`, `CommunityData`.
 - Vite dev server proxies `/api` (including WebSocket) to `http://localhost:8000`.
 - UI is in Chinese.
 

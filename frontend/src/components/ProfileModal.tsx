@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, User, Settings, Database, FileText, Loader2, RefreshCw } from "lucide-react";
+import { X, User, Settings, Database, FileText, Loader2, RefreshCw, ChevronDown } from "lucide-react";
 import type { UserProfile } from "../types";
 import {
   checkBinding,
   startBinding,
   unbind as unbindApi,
   refreshProfile,
+  syncData,
   connectBindWs,
-} from "../api/bind";
-import type { PlatformProfile, PollResult } from "../community/types/bind";
+  getCommunityData,
+} from "../api/douban";
+import type { PlatformProfile, PollResult, BookItem, MovieItem, NoteItem } from "../community/types/bind";
 
 interface ProfileModalProps {
   user: UserProfile;
@@ -40,7 +42,17 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const [qrSrc, setQrSrc] = useState<string | null>(null);
   const [bindError, setBindError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncPhase, setSyncPhase] = useState<PollResult["scrape_phase"]>(undefined);
+  const [scrapePhase, setScrapePhase] = useState<PollResult["scrape_phase"]>(undefined);
+  const [scrapeCounts, setScrapeCounts] = useState<Record<string, number>>({});
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [books, setBooks] = useState<BookItem[]>([]);
+  const [movies, setMovies] = useState<MovieItem[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [dataTab, setDataTab] = useState<"books" | "movies" | "notes">("books");
   const wsRef = useRef<WebSocket | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Check binding on mount
   useEffect(() => {
@@ -48,6 +60,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       if (data.bound) {
         setDoubanBound(true);
         setDoubanProfile(data.profile ?? null);
+        getCommunityData("douban").then((d) => {
+          setBooks(d.books ?? []);
+          setMovies(d.movies ?? []);
+          setNotes(d.notes ?? []);
+        });
       }
     });
   }, []);
@@ -72,9 +89,14 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           setBindPhase(status);
           if (status === "scanned") setQrSrc(null);
         },
-        onBound: (_userId, profile) => {
+        onScraping: (phase, counts) => {
+          setScrapePhase(phase);
+          setScrapeCounts(counts);
+        },
+        onBound: (_userId, profile, counts) => {
           setDoubanBound(true);
           setDoubanProfile(profile ?? null);
+          setScrapeCounts(counts);
           setBinding(false);
           setQrSrc(null);
         },
@@ -97,6 +119,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   };
 
   const handleRefresh = async () => {
+    setMenuOpen(false);
     setRefreshing(true);
     try {
       const data = await refreshProfile("douban");
@@ -108,6 +131,44 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     }
     setRefreshing(false);
   };
+
+  const handleSync = async () => {
+    setMenuOpen(false);
+    setSyncing(true);
+    setSyncPhase(undefined);
+    try {
+      await syncData("douban");
+
+      wsRef.current = connectBindWs("douban", {
+        onQr: () => {},
+        onStatus: () => {},
+        onScraping: (phase, counts) => {
+          setSyncPhase(phase);
+          setScrapeCounts(counts);
+        },
+        onBound: (_userId, _profile, counts) => {
+          setScrapeCounts(counts);
+          setSyncing(false);
+        },
+        onFailed: () => {
+          setSyncing(false);
+        },
+      });
+    } catch {
+      setSyncing(false);
+    }
+  };
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   // Cleanup WebSocket on unmount
   useEffect(() => () => closeWs(), [closeWs]);
@@ -161,11 +222,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                       <span>{user.email}</span>
                     </div>
                     <div className="profile-field">
-                      <strong>{user.booksRead}</strong>
+                      <strong>{books.length}</strong>
                       <span>已读图书</span>
                     </div>
                     <div className="profile-field">
-                      <strong>{user.moviesWatched}</strong>
+                      <strong>{movies.length}</strong>
                       <span>已看电影</span>
                     </div>
                   </div>
@@ -203,29 +264,48 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                               {doubanBound && doubanProfile && (
                                 <span className="platform-status">
                                   已绑定 ({doubanProfile.name ?? doubanProfile.user_id})
+                                  {scrapeCounts.books != null && scrapeCounts.movies != null && (
+                                    <> - 已导入 {scrapeCounts.books} 本图书, {scrapeCounts.movies} 部电影</>
+                                  )}
                                 </span>
                               )}
                             </div>
                           </div>
                           {doubanBound ? (
                             <div className="platform-actions">
-                              <button
-                                className="platform-bind-btn"
-                                onClick={handleRefresh}
-                                disabled={refreshing}
-                              >
-                                {refreshing ? (
-                                  <>
-                                    <Loader2 size={14} className="spin" />
-                                    更新中
-                                  </>
-                                ) : (
-                                  <>
-                                    <RefreshCw size={14} />
-                                    更新信息
-                                  </>
+                              <div className="dropdown-wrapper" ref={menuRef}>
+                                <button
+                                  className="platform-bind-btn"
+                                  onClick={() => setMenuOpen((v) => !v)}
+                                  disabled={refreshing || syncing}
+                                >
+                                  {refreshing || syncing ? (
+                                    <>
+                                      <Loader2 size={14} className="spin" />
+                                      {refreshing && "更新中"}
+                                      {syncing && syncPhase === "books" && "正在同步图书..."}
+                                      {syncing && syncPhase === "movies" && "正在同步影视..."}
+                                      {syncing && !syncPhase && "同步中..."}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCw size={14} />
+                                      更新信息
+                                      <ChevronDown size={12} />
+                                    </>
+                                  )}
+                                </button>
+                                {menuOpen && (
+                                  <div className="dropdown-menu">
+                                    <button className="dropdown-item" onClick={handleRefresh}>
+                                      更新个人信息
+                                    </button>
+                                    <button className="dropdown-item" onClick={handleSync}>
+                                      同步数据
+                                    </button>
+                                  </div>
                                 )}
-                              </button>
+                              </div>
                               <button className="platform-bind-btn unbind" onClick={handleUnbind}>
                                 解绑
                               </button>
@@ -243,6 +323,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                                   {bindPhase === "scanned" && "扫码成功，请在手机确认"}
                                   {bindPhase === "logged_in" && "登录成功"}
                                   {bindPhase === "fetching_profile" && "正在获取用户资料"}
+                                  {bindPhase === "scraping" && scrapePhase === "books" && "正在导入图书..."}
+                                  {bindPhase === "scraping" && scrapePhase === "movies" && "正在导入影视..."}
                                 </>
                               ) : (
                                 "绑定"
@@ -328,7 +410,102 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
             {activeTab === "data" && (
               <div className="settings-page">
                 <h3>数据管理</h3>
-                <p className="settings-desc">管理从豆瓣同步的数据。</p>
+                {!doubanBound ? (
+                  <p className="settings-desc">请先绑定豆瓣账号以查看同步数据。</p>
+                ) : (
+                  <>
+                    <div className="data-tabs">
+                      <button
+                        className={`data-tab ${dataTab === "books" ? "active" : ""}`}
+                        onClick={() => setDataTab("books")}
+                      >
+                        图书 ({books.length})
+                      </button>
+                      <button
+                        className={`data-tab ${dataTab === "movies" ? "active" : ""}`}
+                        onClick={() => setDataTab("movies")}
+                      >
+                        电影 ({movies.length})
+                      </button>
+                      <button
+                        className={`data-tab ${dataTab === "notes" ? "active" : ""}`}
+                        onClick={() => setDataTab("notes")}
+                      >
+                        日记 ({notes.length})
+                      </button>
+                    </div>
+                    <div className="data-list">
+                      {dataTab === "books" && books.map((b) => (
+                        <a key={b.url} href={b.url} target="_blank" rel="noreferrer" className="data-item">
+                          {b.cover && <img src={b.cover} alt="" className="data-item-cover" />}
+                          <div className="data-item-info">
+                            <span className="data-item-title">{b.title}</span>
+                            <span className="data-item-meta">
+                              {b.author && `${b.author}`}
+                              {b.author && b.publisher && " / "}
+                              {b.publisher && `${b.publisher}`}
+                              {b.rating && ` / ${"★".repeat(b.rating)}`}
+                            </span>
+                            {b.tags && b.tags.length > 0 && (
+                              <div className="data-item-tags">
+                                {b.tags.map((t) => <span key={t} className="data-tag">{t}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                      ))}
+                      {dataTab === "movies" && movies.map((m) => (
+                        <a key={m.url} href={m.url} target="_blank" rel="noreferrer" className="data-item">
+                          {m.cover && <img src={m.cover} alt="" className="data-item-cover" />}
+                          <div className="data-item-info">
+                            <span className="data-item-title">{m.title}</span>
+                            <span className="data-item-meta">
+                              {m.release_date && `${m.release_date}`}
+                              {m.rating && ` / ${"★".repeat(m.rating)}`}
+                            </span>
+                            {m.tags && m.tags.length > 0 && (
+                              <div className="data-item-tags">
+                                {m.tags.map((t) => <span key={t} className="data-tag">{t}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        </a>
+                      ))}
+                      {dataTab === "notes" && notes.map((n, i) => (
+                        n.url ? (
+                          <a key={n.url} href={n.url} target="_blank" rel="noreferrer" className="data-item">
+                            <div className="data-item-info">
+                              <span className="data-item-title">{n.title}</span>
+                              <span className="data-item-meta">
+                                {n.date && n.date}
+                                {n.location && ` / ${n.location}`}
+                              </span>
+                            </div>
+                          </a>
+                        ) : (
+                          <div key={i} className="data-item">
+                            <div className="data-item-info">
+                              <span className="data-item-title">{n.title}</span>
+                              <span className="data-item-meta">
+                                {n.date && n.date}
+                                {n.location && ` / ${n.location}`}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      ))}
+                      {dataTab === "books" && books.length === 0 && (
+                        <p className="settings-desc">暂无图书数据，点击"同步数据"开始导入。</p>
+                      )}
+                      {dataTab === "movies" && movies.length === 0 && (
+                        <p className="settings-desc">暂无影视数据，点击"同步数据"开始导入。</p>
+                      )}
+                      {dataTab === "notes" && notes.length === 0 && (
+                        <p className="settings-desc">暂无日记数据，点击"同步数据"开始导入。</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {activeTab === "terms" && (

@@ -83,6 +83,16 @@ class BookRow(Base):
             tags=tags, comment=self.comment,
         )
 
+    def to_api_dict(self) -> dict:
+        tags = json.loads(self.tags) if self.tags else None
+        return {
+            "title": self.title, "url": self.url, "cover": self.cover,
+            "author": self.author, "country": self.country, "translator": self.translator,
+            "publisher": self.publisher, "pub_date": self.pub_date, "price": self.price,
+            "rating": self.rating, "read_date": self.read_date, "status": self.status,
+            "tags": tags, "comment": self.comment,
+        }
+
 
 class MovieRow(Base):
     __tablename__ = "movies"
@@ -111,6 +121,14 @@ class MovieRow(Base):
             release_date=self.release_date, rating=self.rating,
             watch_date=self.watch_date, tags=tags, comment=self.comment,
         )
+
+    def to_api_dict(self) -> dict:
+        tags = json.loads(self.tags) if self.tags else None
+        return {
+            "title": self.title, "url": self.url, "cover": self.cover,
+            "release_date": self.release_date, "rating": self.rating,
+            "watch_date": self.watch_date, "tags": tags, "comment": self.comment,
+        }
 
 
 class GameRow(Base):
@@ -180,11 +198,20 @@ class NoteRow(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str]
     url: Mapped[str | None]
+    date: Mapped[str | None]
+    location: Mapped[str | None]
+    body: Mapped[str | None]
     scraped_at: Mapped[str] = mapped_column(default=lambda: _now())
 
     def to_pydantic(self) -> "community_models.Note":
         from src.community.douban.models import Note
-        return Note(title=self.title, url=self.url)
+        return Note(title=self.title, url=self.url, date=self.date, location=self.location, body=self.body)
+
+    def to_api_dict(self) -> dict:
+        return {
+            "title": self.title, "url": self.url,
+            "date": self.date, "location": self.location, "body": self.body,
+        }
 
 
 def _now() -> str:

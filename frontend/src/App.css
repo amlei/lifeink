@@ -488,6 +488,35 @@
   display: flex;
   gap: 8px;
 }
+.dropdown-wrapper {
+  position: relative;
+}
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 140px;
+  z-index: 10;
+  overflow: hidden;
+}
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+.dropdown-item:hover {
+  background: var(--sky-50);
+}
 .platform-profile-detail {
   display: flex;
   gap: 14px;
@@ -778,4 +807,89 @@
   background: var(--bg-sidebar);
   transition: width 0.2s;
   overflow: hidden;
+}
+
+/* ---- Data Management ---- */
+.data-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.data-tab {
+  padding: 8px 20px;
+  border: none;
+  background: none;
+  color: var(--text-light);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.data-tab.active {
+  color: var(--sky-600);
+  border-bottom-color: var(--sky-500);
+  font-weight: 500;
+}
+.data-tab:hover {
+  color: var(--text);
+}
+.data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.data-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.data-item:hover {
+  background: var(--bg-sidebar);
+}
+.data-item-cover {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.data-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.data-item-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-item-meta {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-item-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.data-tag {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-sidebar);
+  color: var(--text-light);
 }

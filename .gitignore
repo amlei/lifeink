@@ -55,6 +55,7 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+tmp/
 *.temp
 .cache/
 
@@ -67,4 +68,3 @@ last mark/
 # Database
 *.db
 
-/tmp

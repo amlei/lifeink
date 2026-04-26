@@ -1,0 +1,67 @@
+import type { BindStatus, PollResult, CommunityData } from "../community/types/bind";
+
+export type { BindStatus, PollResult, CommunityData };
+export type { PlatformProfile, BookItem, MovieItem, NoteItem } from "../community/types/bind";
+
+async function bindAction(
+  action: "status" | "start" | "refresh" | "delete",
+  platform: string,
+): Promise<Response> {
+  return fetch(`/api/community/bind?action=${action}&platform=${platform}`, {
+    method: "POST",
+  });
+}
+
+export async function checkBinding(platform: string): Promise<BindStatus> {
+  const res = await bindAction("status", platform);
+  return res.json();
+}
+
+export async function startBinding(platform: string): Promise<{ task_id: string }> {
+  const res = await bindAction("start", platform);
+  return res.json();
+}
+
+export async function unbind(platform: string): Promise<{ bound: boolean }> {
+  const res = await bindAction("delete", platform);
+  return res.json();
+}
+
+export async function refreshProfile(platform: string): Promise<BindStatus> {
+  const res = await bindAction("refresh", platform);
+  return res.json();
+}
+
+export async function syncData(platform: string): Promise<{ task_id: string }> {
+  const res = await fetch(`/api/community/sync?platform=${platform}`, { method: "POST" });
+  return res.json();
+}
+
+export async function getCommunityData(platform: string = "douban"): Promise<CommunityData> {
+  const res = await fetch(`/api/community/data?platform=${platform}`);
+  return res.json();
+}
+
+export interface BindWsCallbacks {
+  onQr: (base64: string) => void;
+  onStatus: (status: PollResult["status"]) => void;
+  onScraping: (phase: PollResult["scrape_phase"], counts: Record<string, number>) => void;
+  onBound: (user_id: string, profile: PollResult["profile"] | undefined, counts: Record<string, number>) => void;
+  onFailed: (error: string) => void;
+}
+
+export function connectBindWs(platform: string, cb: BindWsCallbacks): WebSocket {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${proto}//${location.host}/api/community/ws?platform=${platform}`);
+
+  ws.onmessage = (e) => {
+    const data: PollResult = JSON.parse(e.data);
+    cb.onStatus(data.status);
+    if (data.status === "pending" && data.qr_base64) cb.onQr(data.qr_base64);
+    if (data.status === "scraping") cb.onScraping(data.scrape_phase ?? "books", data.scrape_counts ?? {});
+    if (data.status === "bound") cb.onBound(data.user_id!, data.profile ?? undefined, data.scrape_counts ?? {});
+    if (data.status === "failed") cb.onFailed(data.error ?? "绑定失败");
+  };
+
+  return ws;
+}

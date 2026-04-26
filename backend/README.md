@@ -32,8 +32,10 @@ uv run python __main__.py --type books --pages 3
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/api/chat` | POST | 流式聊天响应 |
-| `/api/communityBinding` | POST | 平台绑定操作（query: `action`, `platform`） |
-| `/api/communityBinding/ws` | WS | 绑定进度实时推送 |
+| `/api/community/bind` | POST | 平台绑定操作（query: `action`, `platform`） |
+| `/api/community/sync` | POST | 触发已绑定平台的数据同步 |
+| `/api/community/ws` | WS | 绑定/同步进度实时推送 |
+| `/api/community/data` | GET | 获取已同步的图书、影视、日记数据 |
 
 `action` 可选值: `status`, `start`, `refresh`, `delete`。当前仅支持 `platform=douban`。
 
@@ -45,8 +47,10 @@ uv run python __main__.py --type <类型> [--pages <页数>]
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `--type` | 抓取类型：`profile` `books` `movies` `games` `reviews` `notes` | 必填 |
+| `--type` | 抓取类型：`profile` `books` `movies` `games` `reviews` `notes` `browser` | 必填 |
 | `--pages` | 最大抓取页数 | 1 |
+
+`browser` 类型会使用已保存的 session 打开一个交互式 Chromium 浏览器，方便调试或手动登录。
 
 ## 测试
 
@@ -65,7 +69,7 @@ backend/
   src/
     api.py                         # FastAPI 应用（路由、WebSocket）
     api/
-      bind.py                      # 平台绑定逻辑（AsyncBindManager）
+      douban.py                    # 豆瓣平台绑定逻辑（AsyncBindManager）
     community/
       douban/
         client.py                  # DoubanClient（上下文管理器）

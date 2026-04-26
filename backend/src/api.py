@@ -7,7 +7,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import get_default_user, get_session, init_db
-from src.api.bind import supported_platforms, AsyncBindManager
+from db.repository import CommunityMetaRepo, DataRepo
+from src.api.douban import supported_platforms, AsyncBindManager
 
 
 @asynccontextmanager
@@ -67,8 +68,8 @@ async def chat(request: Request):
 PLATFORMS = supported_platforms()
 
 
-@app.post("/api/communityBinding")
-async def community_binding(
+@app.post("/api/community/bind")
+async def community_bind(
     action: str = Query(...),
     platform: str = Query(...),
 ):
@@ -90,8 +91,22 @@ async def community_binding(
             return await mgr.unbind()
 
 
-@app.websocket("/api/communityBinding/ws")
-async def bind_ws(ws: WebSocket, platform: str = Query(...)):
+@app.post("/api/community/sync")
+async def community_sync(platform: str = Query(...)):
+    if platform not in PLATFORMS:
+        return {"error": f"Unsupported platform: {platform}"}
+    async with get_session() as db:
+        user = await get_default_user(db)
+        row = await CommunityMetaRepo.get_binding(db, user.id, "douban")
+        if row is None or not row.bound or not row.community_user_id:
+            return {"error": "Not bound"}
+        mgr = AsyncBindManager(db, user.id)
+        task = mgr.start_sync(row.community_user_id)
+        return {"task_id": task.task_id}
+
+
+@app.websocket("/api/community/ws")
+async def community_ws(ws: WebSocket, platform: str = Query(...)):
     await ws.accept()
     if platform not in PLATFORMS:
         await ws.send_json({"status": "failed", "error": f"Unsupported platform: {platform}"})
@@ -113,10 +128,14 @@ async def bind_ws(ws: WebSocket, platform: str = Query(...)):
                 result: dict = {"status": task.status}
                 if task.qr_base64:
                     result["qr_base64"] = task.qr_base64
+                if task.status == "scraping":
+                    result["scrape_phase"] = task.scrape_phase
+                    result["scrape_counts"] = task.scrape_counts
                 if task.status == "bound":
                     result["user_id"] = task.user_id
                     if task.profile:
                         result["profile"] = task.profile.model_dump()
+                    result["scrape_counts"] = task.scrape_counts
                 if task.status == "failed":
                     result["error"] = task.error
                 await ws.send_json(result)
@@ -128,6 +147,21 @@ async def bind_ws(ws: WebSocket, platform: str = Query(...)):
                 await task.event.wait()
         except WebSocketDisconnect:
             pass
+
+
+# ---- Community Data ----
+
+
+@app.get("/api/community/data")
+async def community_data(platform: str = Query(default="douban")):
+    if platform not in PLATFORMS:
+        return {"error": f"Unsupported platform: {platform}"}
+    async with get_session() as db:
+        user = await get_default_user(db)
+        books = [row.to_api_dict() for row in await DataRepo.get_books(db, user.id)]
+        movies = [row.to_api_dict() for row in await DataRepo.get_movies(db, user.id)]
+        notes = [row.to_api_dict() for row in await DataRepo.get_notes(db, user.id)]
+        return {"books": books, "movies": movies, "notes": notes}
 
 
 if __name__ == "__main__":
