@@ -7,9 +7,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db import get_session, init_db
+from db.engine import async_session_factory
 from db.models import User
-from db.repository import CommunityMetaRepo, DataRepo
-from src.api.douban import supported_platforms, AsyncBindManager
+from db.repository import CommunityMetaRepo, DataRepo, BookmarkRepo
+from src.api.douban import AsyncBindManager as DoubanBindManager
+from src.api.douban import supported_platforms
+from src.api.weread import WereadBindManager
 from src.core.auth.auth import decode_access_token
 from src.core.middleware import AuthMiddleware
 from src.core.auth.repository import AuthRepo
@@ -80,6 +83,12 @@ async def chat(request: Request):
 PLATFORMS = supported_platforms()
 
 
+def _get_manager(platform: str, db: AsyncSession, user_id: int):
+    if platform == "weread":
+        return WereadBindManager(db, user_id)
+    return DoubanBindManager(db, user_id)
+
+
 @app.post("/api/community/bind")
 async def community_bind(
     request: Request,
@@ -92,7 +101,7 @@ async def community_bind(
     if action not in ("status", "start", "refresh", "delete"):
         return {"error": f"Unsupported action: {action}"}
     user = _user(request)
-    mgr = AsyncBindManager(db, user.id)
+    mgr = _get_manager(platform, db, user.id)
     if action == "status":
         return await mgr.status()
     if action == "start":
@@ -113,10 +122,10 @@ async def community_sync(
     if platform not in PLATFORMS:
         return {"error": f"Unsupported platform: {platform}"}
     user = _user(request)
-    row = await CommunityMetaRepo.get_binding(db, user.id, "douban")
+    row = await CommunityMetaRepo.get_binding(db, user.id, platform)
     if row is None or not row.bound or not row.community_user_id:
         return {"error": "Not bound"}
-    mgr = AsyncBindManager(db, user.id)
+    mgr = _get_manager(platform, db, user.id)
     task = mgr.start_sync(row.community_user_id)
     return {"task_id": task.task_id}
 
@@ -136,12 +145,12 @@ async def community_ws(ws: WebSocket, platform: str = Query(...), token: str = Q
         await ws.close()
         return
 
-    async with get_session() as db:
+    async with async_session_factory() as db:
         user = await AuthRepo.get_user_by_pk(db, user_pk)
         if not user or user.status != "active":
             await ws.close(code=4001)
             return
-        mgr = AsyncBindManager(db, user.id)
+        mgr = _get_manager(platform, db, user.id)
 
         try:
             while True:
@@ -187,6 +196,13 @@ async def community_data(
     if platform not in PLATFORMS:
         return {"error": f"Unsupported platform: {platform}"}
     user = _user(request)
+
+    if platform == "weread":
+        all_books = await DataRepo.get_books(db, user.id)
+        books = [row.to_api_dict() for row in all_books if row.source == "weread"]
+        bookmarks = [row.to_api_dict() for row in await BookmarkRepo.get_bookmarks(db, user.id)]
+        return {"books": books, "bookmarks": bookmarks}
+
     books = [row.to_api_dict() for row in await DataRepo.get_books(db, user.id)]
     movies = [row.to_api_dict() for row in await DataRepo.get_movies(db, user.id)]
     notes = [row.to_api_dict() for row in await DataRepo.get_notes(db, user.id)]

@@ -1,1 +1,15 @@
-"""WeRead scraper module. Placeholder for future implementation."""
+"""WeRead (weread.qq.com) scraper module."""
+
+from .client import WeReadClient
+from .login import WeReadLogin
+from .models import Bookmark, Book, Profile
+from .session import SessionManager
+
+__all__ = [
+    "Bookmark",
+    "Book",
+    "Profile",
+    "SessionManager",
+    "WeReadClient",
+    "WeReadLogin",
+]

@@ -19,12 +19,13 @@ export interface PollResult {
   qr_base64?: string;
   user_id?: string;
   profile?: PlatformProfile;
-  scrape_phase?: "books" | "movies" | "done";
+  scrape_phase?: "books" | "movies" | "bookmarks" | "done";
   scrape_counts?: Record<string, number>;
   error?: string;
 }
 
 export interface BookItem {
+  source?: string;
   title: string;
   url: string;
   cover: string | null;
@@ -39,6 +40,15 @@ export interface BookItem {
   status: string | null;
   tags: string[] | null;
   comment: string | null;
+  // WeRead-specific
+  book_id?: string;
+  isbn?: string | null;
+  category?: string | null;
+  intro?: string | null;
+  total_words?: number | null;
+  rating_detail?: string | null;
+  finished?: boolean | null;
+  finish_reading?: boolean | null;
 }
 
 export interface MovieItem {
@@ -60,8 +70,21 @@ export interface NoteItem {
   body: string | null;
 }
 
+export interface BookmarkItem {
+  source?: string;
+  book_id: string;
+  book_title: string | null;
+  mark_text: string;
+  chapter_name: string | null;
+  chapter_idx: number | null;
+  style: number | null;
+  create_time: number | null;
+  bookmark_id: string | null;
+}
+
 export interface CommunityData {
   books: BookItem[];
   movies: MovieItem[];
   notes: NoteItem[];
+  bookmarks?: BookmarkItem[];
 }

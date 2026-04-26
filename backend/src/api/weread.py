@@ -2,24 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import uuid
 from dataclasses import dataclass, field
 from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.community.douban.client import DoubanClient
-from src.community.douban.models.profile import Profile
-from src.community.douban.session import SessionManager
-from db.repository import CommunityMetaRepo, DataRepo
+from src.community.weread.client import WeReadClient
+from src.community.weread.models.profile import Profile
+from src.community.weread.session import SessionManager
+from db.repository import CommunityMetaRepo, DataRepo, BookmarkRepo
 from db.engine import async_session_factory
 
 
 @dataclass
-class BindTask:
+class WereadBindTask:
     task_id: str
-    platform: str
+    platform: str = "weread"
     status: Literal["pending", "scanned", "logged_in", "fetching_profile", "scraping", "bound", "failed"] = "pending"
     qr_base64: str | None = None
     user_id: str | None = None
@@ -43,17 +42,17 @@ class BindTask:
         self.event.clear()
 
 
-class AsyncBindManager:
-    """Manages platform binding lifecycle with database-backed storage."""
+class WereadBindManager:
+    """Manages WeRead platform binding lifecycle with database-backed storage."""
 
-    _tasks_by_user: dict[int, dict[str, BindTask]] = {}
+    _tasks_by_user: dict[int, dict[str, WereadBindTask]] = {}
 
     def __init__(self, db: AsyncSession, user_id: int) -> None:
         self._db = db
         self._user_id = user_id
-        if user_id not in AsyncBindManager._tasks_by_user:
-            AsyncBindManager._tasks_by_user[user_id] = {}
-        self._tasks = AsyncBindManager._tasks_by_user[user_id]
+        if user_id not in WereadBindManager._tasks_by_user:
+            WereadBindManager._tasks_by_user[user_id] = {}
+        self._tasks = WereadBindManager._tasks_by_user[user_id]
 
     async def status(self) -> dict:
         for task in self._tasks.values():
@@ -72,50 +71,52 @@ class AsyncBindManager:
                 if task.status == "failed":
                     result["error"] = task.error
                 return result
-        row = await CommunityMetaRepo.get_binding(self._db, self._user_id, "douban")
+        row = await CommunityMetaRepo.get_binding(self._db, self._user_id, "weread")
         if row is not None and row.bound:
             return {"status": "bound", **row.to_api_dict()}
         return {"status": "idle"}
 
     async def refresh(self) -> dict:
-        row = await CommunityMetaRepo.get_binding(self._db, self._user_id, "douban")
+        row = await CommunityMetaRepo.get_binding(self._db, self._user_id, "weread")
         if row is None or not row.bound:
             return {"error": "Not bound"}
         if not row.community_user_id:
             return {"error": "No user_id in meta"}
         try:
             state_json, _ = await CommunityMetaRepo.get_session_state(
-                self._db, self._user_id, "douban"
+                self._db, self._user_id, "weread"
             )
-            mgr = SessionManager(state_json=state_json)
-            http = mgr.build_http_session()
-            from src.community.douban.scrapers.profile import ProfileScraper
-
-            profile = ProfileScraper(http, row.community_user_id).scrape()
-            http.close()
+            client = WeReadClient(
+                headless=True,
+                state_json=state_json,
+            )
+            client.__enter__()
+            client.ensure_ready()
+            profile = client.scrape_profile()
+            client.__exit__(None, None, None)
         except Exception as e:
             return {"error": str(e)}
         await CommunityMetaRepo.save_binding(
-            self._db, self._user_id, "douban", row.community_user_id, profile
+            self._db, self._user_id, "weread", row.community_user_id, profile
         )
         await self._db.commit()
         return {
             "bound": True,
-            "platform": "douban",
+            "platform": "weread",
             "user_id": row.community_user_id,
             "profile": profile.model_dump(),
         }
 
     async def unbind(self) -> dict:
-        await CommunityMetaRepo.delete_binding(self._db, self._user_id, "douban")
+        await CommunityMetaRepo.delete_binding(self._db, self._user_id, "weread")
         await self._db.commit()
         self._tasks.clear()
         return {"bound": False}
 
-    def start_sync(self, community_user_id: str) -> BindTask:
+    def start_sync(self, community_user_id: str) -> WereadBindTask:
         self._tasks.clear()
         task_id = uuid.uuid4().hex[:12]
-        task = BindTask(task_id=task_id, platform="douban", status="scraping")
+        task = WereadBindTask(task_id=task_id, status="scraping")
         task.bind_loop()
         self._tasks[task_id] = task
 
@@ -136,10 +137,10 @@ class AsyncBindManager:
         task._notify()
         return task
 
-    def start_bind(self, channel: str = "msedge") -> BindTask:
+    def start_bind(self, channel: str = "msedge") -> WereadBindTask:
         self._tasks.clear()
         task_id = uuid.uuid4().hex[:12]
-        task = BindTask(task_id=task_id, platform="douban")
+        task = WereadBindTask(task_id=task_id)
         task.bind_loop()
         self._tasks[task_id] = task
 
@@ -149,7 +150,7 @@ class AsyncBindManager:
 
         def _run() -> None:
             try:
-                client = DoubanClient(
+                client = WeReadClient(
                     headless=False,
                     channel=channel,
                     on_progress=lambda s: (
@@ -163,7 +164,7 @@ class AsyncBindManager:
                 client.__enter__()
                 client.ensure_ready()
 
-                task.user_id = client.user_id
+                task.user_id = client.vid
                 task.status = "fetching_profile"
                 task._notify()
 
@@ -171,18 +172,14 @@ class AsyncBindManager:
 
                 # Save binding + session state to DB
                 state_json = client._session._state_json
-                expires_at = _extract_dbcl2_expiry(state_json) if state_json else None
                 future = asyncio.run_coroutine_threadsafe(
-                    _save_binding(db, user_id, client.user_id, task.profile, state_json, expires_at),
+                    _save_binding(db, user_id, client.vid, task.profile, state_json),
                     loop,
                 )
                 future.result(timeout=10)
 
-                # Close browser — no longer needed for scraping
-                client.__exit__(None, None, None)
-
-                # Auto-scrape books and movies via sync
-                _run_sync(task, loop, user_id, client.user_id)
+                # Auto-scrape shelf + bookmarks via sync
+                _run_sync(task, loop, user_id, client.vid, client)
 
                 task.status = "bound"
                 task._notify()
@@ -190,6 +187,11 @@ class AsyncBindManager:
                 task.status = "failed"
                 task.error = str(e)
                 task._notify()
+            finally:
+                try:
+                    client.__exit__(None, None, None)
+                except Exception:
+                    pass
 
         asyncio.get_event_loop().run_in_executor(None, _run)
         return task
@@ -198,78 +200,73 @@ class AsyncBindManager:
 async def _save_binding(
     db: AsyncSession,
     user_id: int,
-    community_user_id: str,
+    vid: str,
     profile: Profile,
     state_json: str | None,
-    expires_at: str | None,
 ) -> None:
-    row = await CommunityMetaRepo.save_binding(
-        db, user_id, "douban", community_user_id, profile
+    await CommunityMetaRepo.save_binding(
+        db, user_id, "weread", vid, profile
     )
     if state_json:
-        row.session_state_json = state_json
-        row.session_expires_at = expires_at
+        await CommunityMetaRepo.save_session_state(db, user_id, "weread", state_json, None)
     await db.commit()
 
 
 def _run_sync(
-    task: BindTask,
+    task: WereadBindTask,
     loop: asyncio.AbstractEventLoop,
     user_id: int,
-    community_user_id: str,
+    vid: str,
+    existing_client: WeReadClient | None = None,
 ) -> None:
     async def _do_scrape() -> None:
         async with async_session_factory() as db:
-            state_json, _ = await CommunityMetaRepo.get_session_state(db, user_id, "douban")
+            state_json, _ = await CommunityMetaRepo.get_session_state(db, user_id, "weread")
             if not state_json:
                 return
-            mgr = SessionManager(state_json=state_json)
-            http = mgr.build_http_session()
-            try:
-                from src.community.douban.scrapers.books import BooksScraper
-                from src.community.douban.scrapers.movies import MoviesScraper
 
-                existing_books = {row.url for row in await DataRepo.get_books(db, user_id)}
-                existing_movies = {row.url for row in await DataRepo.get_movies(db, user_id)}
+            client = existing_client
+            should_close = False
+            if client is None:
+                client = WeReadClient(headless=True, state_json=state_json)
+                client.__enter__()
+                client.ensure_ready()
+                should_close = True
+
+            try:
+                from src.community.weread.scrapers.shelf import scrape_shelf
+                from src.community.weread.scrapers.bookmarks import scrape_bookmarks
 
                 task.scrape_phase = "books"
                 task._notify()
                 try:
-                    books = BooksScraper(http, community_user_id).scrape(max_pages=0, existing_urls=existing_books)
-                    await DataRepo.upsert_books(db, user_id, books)
+                    books = scrape_shelf(client._page, vid)
+                    await DataRepo.upsert_weread_books(db, user_id, books)
                     await db.commit()
                     task.scrape_counts["books"] = len(books)
                     task._notify()
                 except Exception:
                     pass
 
-                task.scrape_phase = "movies"
+                # Fetch bookmarks for each book (limit to avoid excessive API calls)
+                task.scrape_phase = "bookmarks"
                 task._notify()
                 try:
-                    movies = MoviesScraper(http, community_user_id).scrape(max_pages=0, existing_urls=existing_movies)
-                    await DataRepo.upsert_movies(db, user_id, movies)
-                    await db.commit()
-                    task.scrape_counts["movies"] = len(movies)
+                    book_ids = [b.book_id for b in books] if "books" in task.scrape_counts else []
+                    all_bookmarks = []
+                    for book_id in book_ids[:50]:  # limit to first 50 books
+                        bms = scrape_bookmarks(client._page, book_id)
+                        all_bookmarks.extend(bms)
+                    if all_bookmarks:
+                        await BookmarkRepo.upsert_bookmarks(db, user_id, all_bookmarks)
+                        await db.commit()
+                    task.scrape_counts["bookmarks"] = len(all_bookmarks)
                     task._notify()
                 except Exception:
                     pass
             finally:
-                http.close()
+                if should_close:
+                    client.__exit__(None, None, None)
 
     future = asyncio.run_coroutine_threadsafe(_do_scrape(), loop)
     future.result(timeout=600)
-
-
-def _extract_dbcl2_expiry(state_json: str) -> str | None:
-    try:
-        data = json.loads(state_json)
-        for cookie in data.get("cookies", []):
-            if cookie.get("name") == "dbcl2":
-                return str(cookie.get("expires", -1))
-    except (json.JSONDecodeError, OSError):
-        pass
-    return None
-
-
-def supported_platforms() -> list[str]:
-    return ["douban", "weread"]

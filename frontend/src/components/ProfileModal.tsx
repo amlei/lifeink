@@ -14,7 +14,7 @@ import {
   connectBindWs,
   getCommunityData,
 } from "../api/douban";
-import type { PlatformProfile, PollResult, BookItem, MovieItem, NoteItem } from "../types/douban";
+import type { PlatformProfile, PollResult, BookItem, MovieItem, NoteItem, BookmarkItem } from "../types/douban";
 import { AuthModal } from "./AuthModal";
 
 interface ProfileModalProps {
@@ -70,6 +70,9 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
   const [activePlatform, setActivePlatform] = useState<string>("douban");
   const [doubanBound, setDoubanBound] = useState(false);
   const [doubanProfile, setDoubanProfile] = useState<PlatformProfile | null>(null);
+  const [wereadBound, setWereadBound] = useState(false);
+  const [wereadProfile, setWereadProfile] = useState<PlatformProfile | null>(null);
+  const [wereadScrapeCounts, setWereadScrapeCounts] = useState<Record<string, number>>({});
   const [binding, setBinding] = useState(false);
   const [bindPhase, setBindPhase] = useState<PollResult["status"]>("idle");
   const [qrSrc, setQrSrc] = useState<string | null>(null);
@@ -94,7 +97,9 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [movies, setMovies] = useState<MovieItem[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [dataTab, setDataTab] = useState<"books" | "movies" | "notes">("books");
+  const [wereadBooks, setWereadBooks] = useState<BookItem[]>([]);
+  const [wereadBookmarks, setWereadBookmarks] = useState<BookmarkItem[]>([]);
+  const [dataTab, setDataTab] = useState<"books" | "movies" | "notes" | "weread_books" | "bookmarks">("books");
   const wsRef = useRef<WebSocket | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -109,6 +114,16 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
           setBooks(d.books ?? []);
           setMovies(d.movies ?? []);
           setNotes(d.notes ?? []);
+        });
+      }
+    });
+    checkBinding("weread").then((data) => {
+      if (data.bound) {
+        setWereadBound(true);
+        setWereadProfile(data.profile ?? null);
+        getCommunityData("weread").then((d) => {
+          setWereadBooks(d.books ?? []);
+          setWereadBookmarks(d.bookmarks ?? []);
         });
       }
     });
@@ -202,6 +217,97 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
     }
   };
 
+  // --- WeRead handlers ---
+  const [wereadBinding, setWereadBinding] = useState(false);
+  const [wereadBindPhase, setWereadBindPhase] = useState<PollResult["status"]>("idle");
+  const [wereadSyncing, setWereadSyncing] = useState(false);
+  const [wereadSyncPhase, setWereadSyncPhase] = useState<PollResult["scrape_phase"]>(undefined);
+  const [wereadMenuOpen, setWereadMenuOpen] = useState(false);
+  const [wereadRefreshing, setWereadRefreshing] = useState(false);
+  const wereadMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const handleWereadBind = async () => {
+    setWereadBinding(true);
+    setBindError(null);
+    setQrSrc(null);
+    try {
+      await startBinding("weread");
+      wsRef.current = connectBindWs("weread", {
+        onQr: (base64) => setQrSrc(`data:image/png;base64,${base64}`),
+        onStatus: (status) => {
+          setWereadBindPhase(status);
+          if (status === "scanned") setQrSrc(null);
+        },
+        onScraping: (phase, counts) => {
+          setScrapePhase(phase);
+          setWereadScrapeCounts(counts);
+        },
+        onBound: (_userId, profile, counts) => {
+          setWereadBound(true);
+          setWereadProfile(profile ?? null);
+          setWereadScrapeCounts(counts);
+          setWereadBinding(false);
+          setQrSrc(null);
+        },
+        onFailed: (error) => {
+          setBindError(error);
+          setWereadBinding(false);
+          setQrSrc(null);
+        },
+      });
+    } catch {
+      setBindError("启动绑定失败");
+      setWereadBinding(false);
+    }
+  };
+
+  const handleWereadUnbind = async () => {
+    await unbindApi("weread");
+    setWereadBound(false);
+    setWereadProfile(null);
+    setWereadBooks([]);
+    setWereadBookmarks([]);
+  };
+
+  const handleWereadRefresh = async () => {
+    setWereadMenuOpen(false);
+    setWereadRefreshing(true);
+    try {
+      const data = await refreshProfile("weread");
+      if (data.profile) setWereadProfile(data.profile);
+    } catch { /* ignore */ }
+    setWereadRefreshing(false);
+  };
+
+  const handleWereadSync = async () => {
+    setWereadMenuOpen(false);
+    setWereadSyncing(true);
+    setWereadSyncPhase(undefined);
+    try {
+      await syncData("weread");
+      wsRef.current = connectBindWs("weread", {
+        onQr: () => {},
+        onStatus: () => {},
+        onScraping: (phase, counts) => {
+          setWereadSyncPhase(phase);
+          setWereadScrapeCounts(counts);
+        },
+        onBound: async (_userId, _profile, counts) => {
+          setWereadScrapeCounts(counts);
+          setWereadSyncing(false);
+          const d = await getCommunityData("weread");
+          setWereadBooks(d.books ?? []);
+          setWereadBookmarks(d.bookmarks ?? []);
+        },
+        onFailed: () => {
+          setWereadSyncing(false);
+        },
+      });
+    } catch {
+      setWereadSyncing(false);
+    }
+  };
+
   const startEditProfile = () => {
     setEditName(user!.name);
     setEditBio(user!.bio ?? "");
@@ -269,10 +375,13 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
+      if (wereadMenuRef.current && !wereadMenuRef.current.contains(e.target as Node)) {
+        setWereadMenuOpen(false);
+      }
     };
-    if (menuOpen) document.addEventListener("mousedown", handleClick);
+    if (menuOpen || wereadMenuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [menuOpen]);
+  }, [menuOpen, wereadMenuOpen]);
 
   // Cleanup WebSocket on unmount
   useEffect(() => () => closeWs(), [closeWs]);
@@ -367,7 +476,7 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                         <span>{user.email}</span>
                       </div>
                       <div className="profile-field">
-                        <strong>{books.length}</strong>
+                        <strong>{books.length + wereadBooks.length}</strong>
                         <span>已读图书</span>
                       </div>
                       {profileError && <p className="auth-error">{profileError}</p>}
@@ -404,7 +513,7 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                         <span>{user.email}</span>
                       </div>
                       <div className="profile-field">
-                        <strong>{books.length}</strong>
+                        <strong>{books.length + wereadBooks.length}</strong>
                         <span>已读图书</span>
                       </div>
                       <div className="profile-field">
@@ -593,7 +702,112 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                         )}
                       </div>
                     )}
-                    {activePlatform !== "douban" &&
+                    {activePlatform === "weread" && (
+                      <div className="platform-binding-card">
+                        <div className="platform-binding-row">
+                          <div className="platform-info">
+                            <img
+                              src="/weread.webp"
+                              alt="微信读书"
+                              className="platform-icon rounded"
+                            />
+                            <div className="platform-detail">
+                              <span className="platform-name">微信读书</span>
+                              {wereadBound && wereadProfile && (
+                                <span className="platform-status">
+                                  已绑定 ({wereadProfile.name ?? wereadProfile.user_id})
+                                  {wereadScrapeCounts.books != null && wereadScrapeCounts.bookmarks != null && (
+                                    <> - 已导入 {wereadScrapeCounts.books} 本图书, {wereadScrapeCounts.bookmarks} 条笔记</>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {wereadBound ? (
+                            <div className="platform-actions">
+                              <div className="dropdown-wrapper" ref={wereadMenuRef}>
+                                <button
+                                  className="platform-bind-btn"
+                                  onClick={() => setWereadMenuOpen((v) => !v)}
+                                  disabled={wereadRefreshing || wereadSyncing}
+                                >
+                                  {wereadRefreshing || wereadSyncing ? (
+                                    <>
+                                      <Loader2 size={14} className="spin" />
+                                      {wereadRefreshing && "更新中"}
+                                      {wereadSyncing && wereadSyncPhase === "books" && "正在同步图书..."}
+                                      {wereadSyncing && wereadSyncPhase === "bookmarks" && "正在同步笔记..."}
+                                      {wereadSyncing && !wereadSyncPhase && "同步中..."}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RefreshCw size={14} />
+                                      更新信息
+                                      <ChevronDown size={12} />
+                                    </>
+                                  )}
+                                </button>
+                                {wereadMenuOpen && (
+                                  <div className="dropdown-menu">
+                                    <button className="dropdown-item" onClick={handleWereadRefresh}>
+                                      更新个人信息
+                                    </button>
+                                    <button className="dropdown-item" onClick={handleWereadSync}>
+                                      同步数据
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <button className="platform-bind-btn unbind" onClick={handleWereadUnbind}>
+                                解绑
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="platform-bind-btn"
+                              onClick={handleWereadBind}
+                              disabled={wereadBinding}
+                            >
+                              {wereadBinding ? (
+                                <>
+                                  <Loader2 size={14} className="spin" />
+                                  {wereadBindPhase === "pending" && "等待扫码"}
+                                  {wereadBindPhase === "scanned" && "扫码成功，请在手机确认"}
+                                  {wereadBindPhase === "logged_in" && "登录成功"}
+                                  {wereadBindPhase === "fetching_profile" && "正在获取用户资料"}
+                                  {wereadBindPhase === "scraping" && scrapePhase === "books" && "正在导入图书..."}
+                                  {wereadBindPhase === "scraping" && scrapePhase === "bookmarks" && "正在导入笔记..."}
+                                </>
+                              ) : (
+                                "绑定"
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        {wereadBound && wereadProfile && (
+                          <div className="platform-profile-detail">
+                            {wereadProfile.avatar && (
+                              <img className="profile-detail-avatar" src={wereadProfile.avatar} alt="" />
+                            )}
+                            <div className="profile-detail-grid">
+                              {wereadProfile.name && (
+                                <div className="profile-field">
+                                  <label>昵称</label>
+                                  <span>{wereadProfile.name}</span>
+                                </div>
+                              )}
+                              {wereadProfile.location && (
+                                <div className="profile-field">
+                                  <label>IP属地</label>
+                                  <span>{wereadProfile.location}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {activePlatform !== "douban" && activePlatform !== "weread" &&
                       (() => {
                         const p = platforms.find((x) => x.id === activePlatform)!;
                         return (
@@ -616,7 +830,7 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                       <div className="qr-overlay">
                         <div className="qr-card">
                           <img src={qrSrc} alt="QR Code" className="qr-image" />
-                          <p>使用豆瓣 App 扫码登录</p>
+                          <p>使用{activePlatform === "weread" ? "微信" : "豆瓣 App"}扫码登录</p>
                         </div>
                       </div>
                     )}
@@ -635,29 +849,49 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
             {activeTab === "data" && (
               <div className="settings-page">
                 <h3>数据管理</h3>
-                {!doubanBound ? (
+                {!doubanBound && !wereadBound ? (
                   <p className="settings-desc">请先绑定账号以查看同步数据。</p>
                 ) : (
                   <>
                     <div className="data-tabs">
-                      <button
-                        className={`data-tab ${dataTab === "books" ? "active" : ""}`}
-                        onClick={() => setDataTab("books")}
-                      >
-                        图书 ({books.length})
-                      </button>
-                      <button
-                        className={`data-tab ${dataTab === "movies" ? "active" : ""}`}
-                        onClick={() => setDataTab("movies")}
-                      >
-                        电影 ({movies.length})
-                      </button>
-                      <button
-                        className={`data-tab ${dataTab === "notes" ? "active" : ""}`}
-                        onClick={() => setDataTab("notes")}
-                      >
-                        日记 ({notes.length})
-                      </button>
+                      {doubanBound && (
+                        <>
+                          <button
+                            className={`data-tab ${dataTab === "books" ? "active" : ""}`}
+                            onClick={() => setDataTab("books")}
+                          >
+                            豆瓣图书 ({books.length})
+                          </button>
+                          <button
+                            className={`data-tab ${dataTab === "movies" ? "active" : ""}`}
+                            onClick={() => setDataTab("movies")}
+                          >
+                            豆瓣电影 ({movies.length})
+                          </button>
+                          <button
+                            className={`data-tab ${dataTab === "notes" ? "active" : ""}`}
+                            onClick={() => setDataTab("notes")}
+                          >
+                            豆瓣日记 ({notes.length})
+                          </button>
+                        </>
+                      )}
+                      {wereadBound && (
+                        <>
+                          <button
+                            className={`data-tab ${dataTab === "weread_books" ? "active" : ""}`}
+                            onClick={() => setDataTab("weread_books")}
+                          >
+                            微信读书 ({wereadBooks.length})
+                          </button>
+                          <button
+                            className={`data-tab ${dataTab === "bookmarks" ? "active" : ""}`}
+                            onClick={() => setDataTab("bookmarks")}
+                          >
+                            读书笔记 ({wereadBookmarks.length})
+                          </button>
+                        </>
+                      )}
                     </div>
                     <div className="data-list">
                       {dataTab === "books" && books.map((b) => (
@@ -719,6 +953,42 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                           </div>
                         )
                       ))}
+                      {dataTab === "weread_books" && wereadBooks.map((b) => (
+                        <div key={b.book_id ?? b.url} className="data-item">
+                          {b.cover && <img src={b.cover} alt="" className="data-item-cover" />}
+                          <div className="data-item-info">
+                            <span className="data-item-title">{b.title}</span>
+                            <span className="data-item-meta">
+                              {b.author && `${b.author}`}
+                              {b.author && b.publisher && " / "}
+                              {b.publisher && `${b.publisher}`}
+                              {b.category && ` / ${b.category}`}
+                              {b.rating_detail && ` / ${b.rating_detail}`}
+                            </span>
+                            <span className="data-item-meta">
+                              {b.total_words && `${(b.total_words / 10000).toFixed(1)}万字`}
+                              {b.total_words && b.isbn && " / "}
+                              {b.isbn && `ISBN ${b.isbn}`}
+                              {b.finish_reading && " / 已读完"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {dataTab === "bookmarks" && wereadBookmarks.map((bm, i) => (
+                        <div key={bm.bookmark_id ?? `${bm.book_id}-${i}`} className="data-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                            <span className="data-item-title" style={{ fontSize: "0.8rem", color: "var(--text-light)" }}>
+                              {bm.chapter_name ?? `第${bm.chapter_idx}章`}
+                            </span>
+                            <span className="data-item-meta">
+                              {bm.book_title}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "0.85rem", lineHeight: 1.5, color: "var(--text)" }}>
+                            {bm.mark_text}
+                          </span>
+                        </div>
+                      ))}
                       {dataTab === "books" && books.length === 0 && (
                         <p className="settings-desc">暂无图书数据，点击"同步数据"开始导入。</p>
                       )}
@@ -727,6 +997,12 @@ export function ProfileModal({ onClose }: ProfileModalProps) {
                       )}
                       {dataTab === "notes" && notes.length === 0 && (
                         <p className="settings-desc">暂无日记数据，点击"同步数据"开始导入。</p>
+                      )}
+                      {dataTab === "weread_books" && wereadBooks.length === 0 && (
+                        <p className="settings-desc">暂无图书数据，点击"同步数据"开始导入。</p>
+                      )}
+                      {dataTab === "bookmarks" && wereadBookmarks.length === 0 && (
+                        <p className="settings-desc">暂无笔记数据，点击"同步数据"开始导入。</p>
                       )}
                     </div>
                   </>

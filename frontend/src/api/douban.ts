@@ -2,7 +2,7 @@ import type { BindStatus, PollResult, CommunityData } from "../types/douban";
 import { authedFetch } from "./auth";
 
 export type { BindStatus, PollResult, CommunityData };
-export type { PlatformProfile, BookItem, MovieItem, NoteItem } from "../types/douban";
+export type { PlatformProfile, BookItem, MovieItem, NoteItem, BookmarkItem } from "../types/douban";
 
 async function bindAction(
   action: "status" | "start" | "refresh" | "delete",

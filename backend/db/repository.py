@@ -7,7 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.community.douban.models import Book, Game, Movie, Note, Profile, Review
+from src.community.douban.models import Book, Game, Movie, Note, Profile as DoubanProfile, Review
+from src.community.weread.models import Bookmark as WereadBookmark
+from src.community.weread.models import Book as WereadBook
+from src.community.weread.models import Profile as WereadProfile
+
+# Union type for save_binding -- accepts either Douban or WeRead Profile
+AnyProfile = DoubanProfile | WereadProfile
 
 from .models import (
     BookRow,
@@ -16,6 +22,7 @@ from .models import (
     MovieRow,
     NoteRow,
     ReviewRow,
+    BookmarkRow,
 )
 
 
@@ -36,7 +43,7 @@ class CommunityMetaRepo:
         user_id: int,
         platform: str,
         community_user_id: str,
-        profile: Profile,
+        profile: AnyProfile,
     ) -> CommunityMeta:
         existing = await CommunityMetaRepo.get_binding(db, user_id, platform)
         if existing is not None:
@@ -100,6 +107,7 @@ class DataRepo:
             tags_json = json.dumps(item.tags) if item.tags else None
             stmt = insert(BookRow).values(
                 user_id=user_id,
+                source="douban",
                 title=item.title,
                 url=item.url,
                 cover=item.cover,
@@ -116,7 +124,7 @@ class DataRepo:
                 comment=item.comment,
             )
             stmt = stmt.on_conflict_do_update(
-                index_elements=["user_id", "url"],
+                index_elements=["user_id", "url", "source"],
                 set_={
                     "title": stmt.excluded.title,
                     "cover": stmt.excluded.cover,
@@ -131,6 +139,55 @@ class DataRepo:
                     "status": stmt.excluded.status,
                     "tags": stmt.excluded.tags,
                     "comment": stmt.excluded.comment,
+                },
+            )
+            await db.execute(stmt)
+            count += 1
+        await db.flush()
+        return count
+
+    @staticmethod
+    async def upsert_weread_books(
+        db: AsyncSession, user_id: int, items: list[WereadBook]
+    ) -> int:
+        count = 0
+        for item in items:
+            stmt = insert(BookRow).values(
+                user_id=user_id,
+                source="weread",
+                title=item.title,
+                url=item.book_id,
+                cover=item.cover,
+                author=item.author,
+                translator=item.translator,
+                publisher=item.publisher,
+                price=str(item.price) if item.price is not None else None,
+                rating=item.rating,
+                isbn=item.isbn,
+                category=item.category,
+                intro=item.intro,
+                total_words=item.total_words,
+                rating_detail=item.rating_detail,
+                finished=1 if item.finished else (0 if item.finished is False else None),
+                finish_reading=1 if item.finish_reading else (0 if item.finish_reading is False else None),
+            )
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "url", "source"],
+                set_={
+                    "title": stmt.excluded.title,
+                    "cover": stmt.excluded.cover,
+                    "author": stmt.excluded.author,
+                    "translator": stmt.excluded.translator,
+                    "publisher": stmt.excluded.publisher,
+                    "price": stmt.excluded.price,
+                    "rating": stmt.excluded.rating,
+                    "isbn": stmt.excluded.isbn,
+                    "category": stmt.excluded.category,
+                    "intro": stmt.excluded.intro,
+                    "total_words": stmt.excluded.total_words,
+                    "rating_detail": stmt.excluded.rating_detail,
+                    "finished": stmt.excluded.finished,
+                    "finish_reading": stmt.excluded.finish_reading,
                 },
             )
             await db.execute(stmt)
@@ -291,4 +348,45 @@ class DataRepo:
     @staticmethod
     async def get_notes(db: AsyncSession, user_id: int) -> Sequence[NoteRow]:
         stmt = select(NoteRow).where(NoteRow.user_id == user_id)
+        return (await db.execute(stmt)).scalars().all()
+
+
+class BookmarkRepo:
+    @staticmethod
+    async def upsert_bookmarks(
+        db: AsyncSession, user_id: int, items: list[WereadBookmark]
+    ) -> int:
+        count = 0
+        for item in items:
+            stmt = insert(BookmarkRow).values(
+                user_id=user_id,
+                source="weread",
+                book_id=item.book_id,
+                book_title=item.book_title,
+                mark_text=item.mark_text,
+                chapter_name=item.chapter_name,
+                chapter_idx=item.chapter_idx,
+                style=item.style,
+                create_time=item.create_time,
+                bookmark_id=item.bookmark_id,
+            )
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["user_id", "source", "book_id", "bookmark_id"],
+                set_={
+                    "mark_text": stmt.excluded.mark_text,
+                    "chapter_name": stmt.excluded.chapter_name,
+                    "chapter_idx": stmt.excluded.chapter_idx,
+                    "style": stmt.excluded.style,
+                    "create_time": stmt.excluded.create_time,
+                    "book_title": stmt.excluded.book_title,
+                },
+            )
+            await db.execute(stmt)
+            count += 1
+        await db.flush()
+        return count
+
+    @staticmethod
+    async def get_bookmarks(db: AsyncSession, user_id: int) -> Sequence[BookmarkRow]:
+        stmt = select(BookmarkRow).where(BookmarkRow.user_id == user_id)
         return (await db.execute(stmt)).scalars().all()

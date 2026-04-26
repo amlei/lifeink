@@ -77,14 +77,15 @@ class CommunityMeta(Base):
 class BookRow(Base):
     __tablename__ = "books"
     __table_args__ = (
-        UniqueConstraint("user_id", "url", name="uq_books_user_url"),
+        UniqueConstraint("user_id", "url", "source", name="uq_books_user_url_source"),
         Index("ix_books_user_id", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(default="douban")  # "douban" or "weread"
     title: Mapped[str]
-    url: Mapped[str]
+    url: Mapped[str]  # Douban URL or WeRead bookId
     cover: Mapped[str | None]
     author: Mapped[str | None]
     country: Mapped[str | None]
@@ -97,6 +98,14 @@ class BookRow(Base):
     status: Mapped[str | None]
     tags: Mapped[str | None]  # JSON array
     comment: Mapped[str | None]
+    # WeRead-specific fields (nullable for Douban rows)
+    isbn: Mapped[str | None]
+    category: Mapped[str | None]
+    intro: Mapped[str | None]
+    total_words: Mapped[int | None]
+    rating_detail: Mapped[str | None]  # e.g. "好评如潮"
+    finished: Mapped[int | None]  # 0/1
+    finish_reading: Mapped[int | None]  # 0/1
     scraped_at: Mapped[str] = mapped_column(default=lambda: _now())
 
     def to_pydantic(self) -> "community_models.Book":
@@ -111,14 +120,30 @@ class BookRow(Base):
         )
 
     def to_api_dict(self) -> dict:
-        tags = json.loads(self.tags) if self.tags else None
-        return {
+        d = {
+            "source": self.source,
             "title": self.title, "url": self.url, "cover": self.cover,
-            "author": self.author, "country": self.country, "translator": self.translator,
-            "publisher": self.publisher, "pub_date": self.pub_date, "price": self.price,
-            "rating": self.rating, "read_date": self.read_date, "status": self.status,
-            "tags": tags, "comment": self.comment,
+            "author": self.author, "translator": self.translator,
+            "publisher": self.publisher, "price": self.price,
+            "rating": self.rating,
         }
+        if self.source == "weread":
+            d.update({
+                "book_id": self.url,
+                "isbn": self.isbn, "category": self.category,
+                "intro": self.intro, "total_words": self.total_words,
+                "rating_detail": self.rating_detail,
+                "finished": bool(self.finished) if self.finished is not None else None,
+                "finish_reading": bool(self.finish_reading) if self.finish_reading is not None else None,
+            })
+        else:
+            tags = json.loads(self.tags) if self.tags else None
+            d.update({
+                "country": self.country, "pub_date": self.pub_date,
+                "read_date": self.read_date, "status": self.status,
+                "tags": tags, "comment": self.comment,
+            })
+        return d
 
 
 class MovieRow(Base):
@@ -238,6 +263,36 @@ class NoteRow(Base):
         return {
             "title": self.title, "url": self.url,
             "date": self.date, "location": self.location, "body": self.body,
+        }
+
+
+class BookmarkRow(Base):
+    __tablename__ = "bookmarks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "source", "book_id", "bookmark_id", name="uq_bookmarks_user_src_book_bm"),
+        Index("ix_bookmarks_user_id", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(default="weread")  # "weread", etc.
+    book_id: Mapped[str]
+    book_title: Mapped[str | None]
+    mark_text: Mapped[str]
+    chapter_name: Mapped[str | None]
+    chapter_idx: Mapped[int | None]
+    style: Mapped[int | None]
+    create_time: Mapped[int | None]
+    bookmark_id: Mapped[str | None]
+    scraped_at: Mapped[str] = mapped_column(default=lambda: _now())
+
+    def to_api_dict(self) -> dict:
+        return {
+            "source": self.source,
+            "book_id": self.book_id, "book_title": self.book_title,
+            "mark_text": self.mark_text, "chapter_name": self.chapter_name,
+            "chapter_idx": self.chapter_idx, "style": self.style,
+            "create_time": self.create_time, "bookmark_id": self.bookmark_id,
         }
 
 
