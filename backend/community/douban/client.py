@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import Callable
 
 from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 import requests
@@ -18,6 +21,8 @@ from .scrapers.profile import ProfileScraper
 from .scrapers.reviews import ReviewsScraper
 from .session import SessionManager
 
+ProgressCallback = Callable[[str], None]
+
 
 class DoubanClient:
     """Douban data client: Playwright for login, requests for scraping.
@@ -36,12 +41,14 @@ class DoubanClient:
         headless: bool = True,
         state_path: Path | None = None,
         channel: str = "msedge",
+        on_progress: ProgressCallback | None = None,
     ):
         self._user_id = user_id
         self._headless = headless
         self._channel = channel
         self._session = SessionManager(state_path)
         self._http: requests.Session | None = None
+        self._on_progress = on_progress
 
     def __enter__(self) -> "DoubanClient":
         self._http = self._session.build_http_session()
@@ -54,6 +61,14 @@ class DoubanClient:
     @property
     def user_id(self) -> str:
         return self._user_id
+
+    @property
+    def session(self) -> SessionManager:
+        return self._session
+
+    def _notify(self, status: str) -> None:
+        if self._on_progress:
+            self._on_progress(status)
 
     def _run_playwright_login(self, qr_output_dir: Path | None = None) -> None:
         """Launch Playwright solely for login, then close it and refresh http session."""
@@ -72,11 +87,21 @@ class DoubanClient:
             login = DoubanLogin(page, qr_output_dir)
             if not login.is_logged_in(page):
                 qr_path = login.initiate_qr_login()
+                self._notify("qr_ready")
                 print(f"Scan QR code: {qr_path}")
-                ok = login.wait_for_login()
-                if not ok:
-                    raise RuntimeError("Login failed")
 
+                try:
+                    page.wait_for_selector(".account-qr-success", state="visible", timeout=120_000)
+                    self._notify("scanned")
+                except Exception:
+                    pass
+
+                if "www.douban.com" not in page.url:
+                    ok = login.wait_for_login(timeout=60.0)
+                    if not ok:
+                        raise RuntimeError("Login failed")
+
+            self._notify("logged_in")
             self._session.save_state(context)
 
             # Auto-detect user_id from /mine/ redirect
@@ -89,11 +114,20 @@ class DoubanClient:
                     raise RuntimeError(f"Cannot extract user_id from URL: {page.url}")
                 self._user_id = m.group(1)
         finally:
-            if context:
-                context.close()
-            if browser:
-                browser.close()
-            pw.stop()
+            try:
+                if context:
+                    context.close()
+            except Exception:
+                pass
+            try:
+                if browser:
+                    browser.close()
+            except Exception:
+                pass
+            try:
+                pw.stop()
+            except Exception:
+                pass
 
         # Rebuild http session with fresh cookies
         self._http = self._session.build_http_session()

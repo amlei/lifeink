@@ -61,11 +61,7 @@ Thumbs.db
 # Last sync tracking files (these contain user-specific data)
 last mark/
 
-# Test files
-test/
-tests/
-
 .playwright
 .playwright-cli
 
-douban-login-qr.png
+/tmp
