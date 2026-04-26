@@ -28,6 +28,25 @@ uv run python __main__.py --type books --pages 3
 
 Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`.
 
+### Frontend (React + Vite + Bun)
+
+```bash
+cd frontend
+bun install           # install dependencies
+bun run dev           # start dev server (http://localhost:5173)
+bun run build         # production build
+bun run lint          # run ESLint
+bun run preview       # preview production build
+```
+
+Uses Bun as the runtime and package manager. Vite handles building and dev server.
+
+### One-command startup
+
+```bash
+./start.sh            # starts backend (uv) + frontend (bun) concurrently
+```
+
 ## Architecture
 
 ### Root: Notion Sync Pipeline
@@ -60,6 +79,16 @@ Independent `uv`-managed project with its own `pyproject.toml` and `.venv`.
 - Strictly prohibited from using emojis.
 - All files created for temporary use shall be placed in the `tmp/` directory.
 
+### frontend/: React Chat Interface
+
+Bun-managed project with Vite as the build tool.
+
+- React 19 + TypeScript, using Vercel AI SDK (`ai`, `@ai-sdk/react`) for streaming chat.
+- `App.tsx` renders `Sidebar`, `ChatPanel`, and `WelcomeScreen`.
+- `useChatStore` hook manages chat state (messages, history, active chat).
+- Vite dev server proxies `/api` requests to backend at `http://localhost:8000`.
+- `start.sh` launches both backend (uv) and frontend (bun run dev) concurrently.
+
 ## Required Configuration
 
 `.env` file at project root (gitignored):
@@ -76,3 +105,6 @@ Independent `uv`-managed project with its own `pyproject.toml` and `.venv`.
 
 - `.github/workflows/pages.yml` -- deploys a GitHub Pages site
 - `.github/workflows/auto-merge.yml` -- auto-merge for dependabot PRs
+
+## Important principles
+Creating .sh and other script files is prohibited.
