@@ -90,7 +90,7 @@ async def auth_handler(
     if user is None:
         raise HTTPException(status_code=401, detail="未登录")
 
-    if action == "me":
+    if action == "mine":
         return user.to_api_dict()
 
     if action == "update-profile":

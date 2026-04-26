@@ -66,7 +66,7 @@ export async function login(email: string, password: string): Promise<AuthTokens
 }
 
 export async function getMe(): Promise<UserProfile> {
-  const res = await authFetch({ action: "me" }, true);
+  const res = await authFetch({ action: "mine" }, true);
   if (!res.ok) throw new Error("Not authenticated");
   return res.json();
 }

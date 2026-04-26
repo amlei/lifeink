@@ -9,9 +9,7 @@ from src.core.auth.repository import AuthRepo
 from db.engine import async_session_factory
 
 WHITE_LIST: set[str] = {
-    "/api/auth/register",
-    "/api/auth/verify",
-    "/api/auth/login",
+    "/api/auth",
     "/api/chat",
     "/docs",
     "/openapi.json",

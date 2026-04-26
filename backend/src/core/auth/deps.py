@@ -9,13 +9,15 @@ from db.models import User
 from src.core.auth.auth import decode_access_token
 from src.core.auth.repository import AuthRepo
 
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: AsyncSession = Depends(get_session),
-) -> User:
+) -> User | None:
+    if credentials is None:
+        return None
     try:
         payload = decode_access_token(credentials.credentials)
     except Exception:
