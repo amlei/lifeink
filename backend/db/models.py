@@ -12,11 +12,38 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(unique=True)
+    user_id: Mapped[str] = mapped_column(unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(nullable=False)
+    name: Mapped[str] = mapped_column(nullable=False)
+    avatar: Mapped[str | None] = mapped_column(default=None)
+    bio: Mapped[str | None] = mapped_column(default=None)
+    status: Mapped[str] = mapped_column(default="active")
+    email_verified: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[str] = mapped_column(default=lambda: _now())
+    updated_at: Mapped[str] = mapped_column(default=lambda: _now(), onupdate=lambda: _now())
 
-    def __repr__(self) -> str:
-        return f"User(id={self.id}, username={self.username!r})"
+    def to_api_dict(self) -> dict:
+        return {
+            "user_id": self.user_id,
+            "email": self.email,
+            "name": self.name,
+            "avatar": self.avatar,
+            "bio": self.bio,
+            "email_verified": self.email_verified,
+            "created_at": self.created_at,
+        }
+
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(nullable=False, index=True)
+    code: Mapped[str] = mapped_column(nullable=False)
+    expires_at: Mapped[str] = mapped_column(nullable=False)
+    used: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[str] = mapped_column(default=lambda: _now())
 
 
 class CommunityMeta(Base):

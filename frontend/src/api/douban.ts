@@ -1,13 +1,14 @@
-import type { BindStatus, PollResult, CommunityData } from "../community/types/bind";
+import type { BindStatus, PollResult, CommunityData } from "../types/douban";
+import { authedFetch } from "./auth";
 
 export type { BindStatus, PollResult, CommunityData };
-export type { PlatformProfile, BookItem, MovieItem, NoteItem } from "../community/types/bind";
+export type { PlatformProfile, BookItem, MovieItem, NoteItem } from "../types/douban";
 
 async function bindAction(
   action: "status" | "start" | "refresh" | "delete",
   platform: string,
 ): Promise<Response> {
-  return fetch(`/api/community/bind?action=${action}&platform=${platform}`, {
+  return authedFetch(`/api/community/bind?action=${action}&platform=${platform}`, {
     method: "POST",
   });
 }
@@ -33,12 +34,12 @@ export async function refreshProfile(platform: string): Promise<BindStatus> {
 }
 
 export async function syncData(platform: string): Promise<{ task_id: string }> {
-  const res = await fetch(`/api/community/sync?platform=${platform}`, { method: "POST" });
+  const res = await authedFetch(`/api/community/sync?platform=${platform}`, { method: "POST" });
   return res.json();
 }
 
 export async function getCommunityData(platform: string = "douban"): Promise<CommunityData> {
-  const res = await fetch(`/api/community/data?platform=${platform}`);
+  const res = await authedFetch(`/api/community/data?platform=${platform}`);
   return res.json();
 }
 
@@ -51,8 +52,9 @@ export interface BindWsCallbacks {
 }
 
 export function connectBindWs(platform: string, cb: BindWsCallbacks): WebSocket {
+  const token = localStorage.getItem("auth_token") ?? "";
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(`${proto}//${location.host}/api/community/ws?platform=${platform}`);
+  const ws = new WebSocket(`${proto}//${location.host}/api/community/ws?platform=${platform}&token=${token}`);
 
   ws.onmessage = (e) => {
     const data: PollResult = JSON.parse(e.data);

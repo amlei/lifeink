@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from "react";
+import "./Sidebar.css";
 import {
   PanelRightClose,
   MessageSquarePlus,
@@ -19,6 +20,7 @@ interface SidebarProps {
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
   onShowProfile: () => void;
+  onLogout: () => void;
   onTransitionEnd?: () => void;
 }
 
@@ -33,6 +35,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
       onSelectChat,
       onNewChat,
       onShowProfile,
+      onLogout,
       onTransitionEnd,
     },
     ref
@@ -64,7 +67,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
         },
       },
       { icon: HelpCircle, label: "帮助与反馈", action: () => setMenuOpen(false) },
-      { icon: LogOut, label: "退出登录", action: () => setMenuOpen(false) },
+      { icon: LogOut, label: "退出登录", action: onLogout },
     ];
 
     function getDateLabel(ts: number): string {

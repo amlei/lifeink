@@ -1,30 +1,19 @@
 import { useState, useCallback } from "react";
 import { PanelRightOpen } from "lucide-react";
-import type { UserProfile } from "./types";
 import { useChatStore } from "./hooks/useChatStore";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Sidebar } from "./components/Sidebar";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { ChatPanel } from "./components/ChatPanel";
 import { ProfileModal } from "./components/ProfileModal";
 import "./App.css";
 
-const MOCK_USER: UserProfile = {
-  name: "Amlei",
-  avatar: "",
-  email: "user@example.com",
-  doubanId: "amlei",
-  booksRead: 42,
-  moviesWatched: 128,
-};
-
-function App() {
+function AppInner() {
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  // Controls when the center-header expand button actually appears
-  // Only becomes true after sidebar collapse animation finishes
   const [showExpandBtn, setShowExpandBtn] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const store = useChatStore();
-  const user: UserProfile | null = MOCK_USER;
 
   const handleWelcomeSend = (text: string) => {
     const id = store.createChat();
@@ -33,7 +22,6 @@ function App() {
 
   const handleCollapse = useCallback(() => {
     setSidebarOpen(false);
-    // expand button will show after transitionend
   }, []);
 
   const handleExpand = useCallback(() => {
@@ -58,6 +46,7 @@ function App() {
         onSelectChat={store.switchChat}
         onNewChat={() => store.switchChat(null)}
         onShowProfile={() => setShowProfile(true)}
+        onLogout={logout}
         onTransitionEnd={handleTransitionEnd}
       />
 
@@ -82,11 +71,17 @@ function App() {
 
       <aside className="right-panel" />
 
-      {showProfile && user && (
-        <ProfileModal user={user} onClose={() => setShowProfile(false)} />
+      {showProfile && (
+        <ProfileModal onClose={() => setShowProfile(false)} />
       )}
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
+}

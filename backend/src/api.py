@@ -1,14 +1,19 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db import get_default_user, get_session, init_db
+from db import get_session, init_db
+from db.models import User
 from db.repository import CommunityMetaRepo, DataRepo
 from src.api.douban import supported_platforms, AsyncBindManager
+from src.core.auth.auth import decode_access_token
+from src.core.middleware import AuthMiddleware
+from src.core.auth.repository import AuthRepo
+from src.core.auth.routes import router as auth_router
 
 
 @asynccontextmanager
@@ -19,12 +24,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+
+
+def _user(request: Request) -> User:
+    return request.state.user
 
 
 # ---- Chat ----
@@ -70,43 +82,54 @@ PLATFORMS = supported_platforms()
 
 @app.post("/api/community/bind")
 async def community_bind(
+    request: Request,
     action: str = Query(...),
     platform: str = Query(...),
+    db: AsyncSession = Depends(get_session),
 ):
     if platform not in PLATFORMS:
         return {"error": f"Unsupported platform: {platform}"}
     if action not in ("status", "start", "refresh", "delete"):
         return {"error": f"Unsupported action: {action}"}
-    async with get_session() as db:
-        user = await get_default_user(db)
-        mgr = AsyncBindManager(db, user.id)
-        if action == "status":
-            return await mgr.status()
-        if action == "start":
-            task = mgr.start_bind()
-            return {"task_id": task.task_id}
-        if action == "refresh":
-            return await mgr.refresh()
-        if action == "delete":
-            return await mgr.unbind()
+    user = _user(request)
+    mgr = AsyncBindManager(db, user.id)
+    if action == "status":
+        return await mgr.status()
+    if action == "start":
+        task = mgr.start_bind()
+        return {"task_id": task.task_id}
+    if action == "refresh":
+        return await mgr.refresh()
+    if action == "delete":
+        return await mgr.unbind()
 
 
 @app.post("/api/community/sync")
-async def community_sync(platform: str = Query(...)):
+async def community_sync(
+    request: Request,
+    platform: str = Query(...),
+    db: AsyncSession = Depends(get_session),
+):
     if platform not in PLATFORMS:
         return {"error": f"Unsupported platform: {platform}"}
-    async with get_session() as db:
-        user = await get_default_user(db)
-        row = await CommunityMetaRepo.get_binding(db, user.id, "douban")
-        if row is None or not row.bound or not row.community_user_id:
-            return {"error": "Not bound"}
-        mgr = AsyncBindManager(db, user.id)
-        task = mgr.start_sync(row.community_user_id)
-        return {"task_id": task.task_id}
+    user = _user(request)
+    row = await CommunityMetaRepo.get_binding(db, user.id, "douban")
+    if row is None or not row.bound or not row.community_user_id:
+        return {"error": "Not bound"}
+    mgr = AsyncBindManager(db, user.id)
+    task = mgr.start_sync(row.community_user_id)
+    return {"task_id": task.task_id}
 
 
 @app.websocket("/api/community/ws")
-async def community_ws(ws: WebSocket, platform: str = Query(...)):
+async def community_ws(ws: WebSocket, platform: str = Query(...), token: str = Query(...)):
+    try:
+        payload = decode_access_token(token)
+        user_pk = payload["pk"]
+    except Exception:
+        await ws.close(code=4001)
+        return
+
     await ws.accept()
     if platform not in PLATFORMS:
         await ws.send_json({"status": "failed", "error": f"Unsupported platform: {platform}"})
@@ -114,7 +137,10 @@ async def community_ws(ws: WebSocket, platform: str = Query(...)):
         return
 
     async with get_session() as db:
-        user = await get_default_user(db)
+        user = await AuthRepo.get_user_by_pk(db, user_pk)
+        if not user or user.status != "active":
+            await ws.close(code=4001)
+            return
         mgr = AsyncBindManager(db, user.id)
 
         try:
@@ -153,15 +179,18 @@ async def community_ws(ws: WebSocket, platform: str = Query(...)):
 
 
 @app.get("/api/community/data")
-async def community_data(platform: str = Query(default="douban")):
+async def community_data(
+    request: Request,
+    platform: str = Query(default="douban"),
+    db: AsyncSession = Depends(get_session),
+):
     if platform not in PLATFORMS:
         return {"error": f"Unsupported platform: {platform}"}
-    async with get_session() as db:
-        user = await get_default_user(db)
-        books = [row.to_api_dict() for row in await DataRepo.get_books(db, user.id)]
-        movies = [row.to_api_dict() for row in await DataRepo.get_movies(db, user.id)]
-        notes = [row.to_api_dict() for row in await DataRepo.get_notes(db, user.id)]
-        return {"books": books, "movies": movies, "notes": notes}
+    user = _user(request)
+    books = [row.to_api_dict() for row in await DataRepo.get_books(db, user.id)]
+    movies = [row.to_api_dict() for row in await DataRepo.get_movies(db, user.id)]
+    notes = [row.to_api_dict() for row in await DataRepo.get_notes(db, user.id)]
+    return {"books": books, "movies": movies, "notes": notes}
 
 
 if __name__ == "__main__":

@@ -68,3 +68,6 @@ last mark/
 # Database
 *.db
 
+# Config
+backend/config.yaml
+

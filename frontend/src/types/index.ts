@@ -5,10 +5,16 @@ export interface ChatMeta {
 }
 
 export interface UserProfile {
+  user_id: string;
   name: string;
-  avatar: string;
   email: string;
-  doubanId: string;
-  booksRead: number;
-  moviesWatched: number;
+  avatar: string | null;
+  bio: string | null;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface AuthTokens {
+  access_token: string;
+  user: UserProfile;
 }

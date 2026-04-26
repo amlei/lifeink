@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import "./ChatPanel.css";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Send } from "lucide-react";

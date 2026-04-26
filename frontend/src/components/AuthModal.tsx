@@ -1,0 +1,195 @@
+import { useState } from "react";
+import "./AuthModal.css";
+import { X, Loader2, Mail, Lock, KeyRound } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { getPasswordStrength } from "../utils/password";
+import type { StrengthLevel } from "../utils/password";
+
+interface AuthModalProps {
+  onClose: () => void;
+}
+
+export function AuthModal({ onClose }: AuthModalProps) {
+  const { login, register, verifyAndCreate } = useAuth();
+
+  const [authView, setAuthView] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authCode, setAuthCode] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
+
+  const handleLogin = async () => {
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      await login(authEmail, authPassword);
+    } catch (e: any) {
+      setAuthError(e.message);
+    }
+    setAuthLoading(false);
+  };
+
+  const handleSendCode = async () => {
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      await register(authEmail);
+      setCodeSent(true);
+    } catch (e: any) {
+      setAuthError(e.message);
+    }
+    setAuthLoading(false);
+  };
+
+  const handleVerify = async () => {
+    setAuthError(null);
+    if (!authPassword || authPassword.length < 6) {
+      setAuthError("密码至少需要 6 个字符");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      await verifyAndCreate(authEmail, authCode, authPassword);
+    } catch (e: any) {
+      setAuthError(e.message);
+    }
+    setAuthLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal auth-modal">
+        <div className="modal-header">
+          <h2>{authView === "login" ? "登录" : "注册"}</h2>
+          <button className="modal-close" onClick={onClose}>
+            <X size={22} />
+          </button>
+        </div>
+        <div className="auth-form">
+          {authError && <p className="auth-error">{authError}</p>}
+
+          {authView === "login" && (
+            <>
+              <div className="auth-input-wrap">
+                <Mail size={16} className="auth-input-icon" />
+                <input
+                  className="auth-input has-icon"
+                  type="email"
+                  placeholder="邮箱"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                />
+              </div>
+              <div className="auth-input-wrap">
+                <Lock size={16} className="auth-input-icon" />
+                <input
+                  className="auth-input has-icon"
+                  type="password"
+                  placeholder="密码"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                />
+              </div>
+              <button className="auth-btn" onClick={handleLogin} disabled={authLoading}>
+                {authLoading ? <Loader2 size={16} className="spin" /> : "登录"}
+              </button>
+              <p className="auth-link" onClick={() => { setAuthView("register"); setAuthError(null); setCodeSent(false); }}>
+                没有账号？注册
+              </p>
+            </>
+          )}
+
+          {authView === "register" && (
+            <>
+              <div className="auth-input-wrap">
+                <Mail size={16} className="auth-input-icon" />
+                <input
+                  className="auth-input has-icon"
+                  type="email"
+                  placeholder="邮箱"
+                  value={authEmail}
+                  onChange={(e) => { setAuthEmail(e.target.value); setCodeSent(false); }}
+                  disabled={codeSent}
+                />
+              </div>
+              {codeSent && <p className="auth-hint">验证码已发送至 {authEmail}</p>}
+              <div className="auth-code-row">
+                <div className="auth-input-wrap" style={{ flex: 1 }}>
+                  <KeyRound size={16} className="auth-input-icon" />
+                  <input
+                    className="auth-input has-icon auth-code-input"
+                    type="text"
+                    placeholder="6 位验证码"
+                    maxLength={6}
+                    value={authCode}
+                    onChange={(e) => setAuthCode(e.target.value)}
+                    disabled={!codeSent}
+                  />
+                </div>
+                <button
+                  className="auth-btn auth-code-btn"
+                  onClick={handleSendCode}
+                  disabled={authLoading || !authEmail}
+                >
+                  {codeSent ? "重新发送" : "发送验证码"}
+                </button>
+              </div>
+              <div className="auth-input-wrap">
+                <Lock size={16} className="auth-input-icon" />
+                <input
+                  className="auth-input has-icon"
+                  type="password"
+                  placeholder="密码（至少 6 位）"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                />
+              </div>
+              {authPassword && <StrengthBar level={getPasswordStrength(authPassword)} />}
+              <button
+                className="auth-btn"
+                onClick={handleVerify}
+                disabled={authLoading || !codeSent}
+              >
+                {authLoading ? <Loader2 size={16} className="spin" /> : "创建账号"}
+              </button>
+              <p className="auth-link" onClick={() => { setAuthView("login"); setAuthError(null); setCodeSent(false); }}>
+                已有账号？登录
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STRENGTH_COLORS: Record<StrengthLevel, [string, string, string]> = {
+  0: ["var(--border)", "var(--border)", "var(--border)"],
+  1: ["#ef4444", "var(--border)", "var(--border)"],
+  2: ["#f59e0b", "#f59e0b", "var(--border)"],
+  3: ["#22c55e", "#22c55e", "#22c55e"],
+};
+
+const STRENGTH_LABELS: Record<StrengthLevel, string> = {
+  0: "",
+  1: "弱",
+  2: "中",
+  3: "强",
+};
+
+function StrengthBar({ level }: { level: StrengthLevel }) {
+  const colors = STRENGTH_COLORS[level];
+  return (
+    <div className="pw-strength">
+      <div className="pw-strength-bars">
+        {colors.map((color, i) => (
+          <div key={i} className="pw-strength-seg" style={{ backgroundColor: color }} />
+        ))}
+      </div>
+      {level > 0 && <span className="pw-strength-label">{STRENGTH_LABELS[level]}</span>}
+    </div>
+  );
+}

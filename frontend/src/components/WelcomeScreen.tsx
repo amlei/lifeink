@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./WelcomeScreen.css";
 import { Send } from "lucide-react";
 
 interface WelcomeScreenProps {

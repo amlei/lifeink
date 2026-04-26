@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="assets/Banner.png" alt="LifeInk AI" width="100%" />
+</div>
+
 # LifeInk AI
 
 > Personal AI Agent - 聚合书影音日记，用 AI 重新理解你的生活。
@@ -7,6 +11,12 @@ LifeInk AI 从豆瓣、微信读书、Flomo 等平台采集个人的阅读、影
 ---
 
 ## 当前状态
+
+### 用户系统
+
+- [x] JWT 邮箱注册/登录（bcrypt 密码哈希）
+- [x] 邮箱验证码（SMTP，预设 qq/outlook/163/126/yeah）
+- [x] 个人资料编辑、密码修改、账号注销
 
 ### 数据源
 
@@ -44,6 +54,10 @@ icon/                # 页面图标
 backend/             # API 服务 + 数据抓取（uv 独立项目）
   src/api.py         # FastAPI 应用（路由、WebSocket）
   src/api/douban.py  # 豆瓣平台绑定逻辑（AsyncBindManager）
+  src/core/          # 认证与基础设施
+    auth/            # JWT 认证（注册/登录/验证码/密码重置）
+    middleware.py    # AuthMiddleware（全局 JWT 校验）
+    utils/           # 配置加载、邮件发送
   src/community/     # 社区数据源
     douban/          # 豆瓣（Playwright 登录 + requests 抓取）
     weread/          # 微信读书（待开发）
@@ -52,9 +66,11 @@ backend/             # API 服务 + 数据抓取（uv 独立项目）
   tests/             # pytest 测试
 
 frontend/            # React 聊天界面（Bun + Vite）
-  src/api/douban.ts  # 豆瓣 API 集成（REST + WebSocket）
-  src/components/    # UI 组件（Sidebar, ChatPanel, ProfileModal 等）
+  src/api/           # API 集成（auth.ts, douban.ts）
+  src/components/    # UI 组件（AuthModal, Sidebar, ChatPanel, ProfileModal 等）
+  src/contexts/      # React Context（AuthContext）
   src/hooks/         # 自定义 Hook（useChatStore）
+  src/types/         # TypeScript 类型定义
 ```
 
 ---
@@ -78,6 +94,7 @@ frontend/            # React 聊天界面（Bun + Vite）
 cd backend
 uv sync
 uv run python -m playwright install chromium  # 首次
+cp config-example.yaml config.yaml            # 配置 SMTP（注册功能需要）
 uv run python src/api.py
 ```
 
@@ -99,6 +116,7 @@ python main.py
 
 - [x] 豆瓣全量数据抓取
 - [x] 本地数据持久化
+- [x] 用户注册与登录系统
 - [ ] 微信读书数据接入
 - [ ] Flomo 数据接入
 
