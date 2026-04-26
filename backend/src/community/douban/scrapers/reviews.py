@@ -2,6 +2,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from .. import BASE_URL
 from ..models.review import Review
 from .base import BaseScraper, clean
 
@@ -12,7 +13,7 @@ class ReviewsScraper(BaseScraper):
 
     def _url(self, page_num: int) -> str:
         start = (page_num - 1) * _ITEMS_PER_PAGE
-        return f"https://www.douban.com/people/{self.user_id}/reviews?start={start}"
+        return f"{BASE_URL}/people/{self.user_id}/reviews?start={start}"
 
     def _parse_page(self, soup: BeautifulSoup) -> list[Review]:
         elements = soup.select(".review-item")

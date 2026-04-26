@@ -11,7 +11,7 @@ cleanup() {
 trap cleanup INT TERM
 
 echo "Starting backend..."
-(cd "$ROOT_DIR/backend" && uv run python api.py) &
+(cd "$ROOT_DIR/backend" && uv run python src/api.py) &
 BACKEND_PID=$!
 
 echo "Starting frontend..."

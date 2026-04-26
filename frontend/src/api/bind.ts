@@ -3,23 +3,32 @@ import type { BindStatus, PollResult } from "../community/types/bind";
 export type { BindStatus, PollResult };
 export type { PlatformProfile } from "../community/types/bind";
 
+async function communityBinding(
+  action: "status" | "start" | "refresh" | "delete",
+  platform: string,
+): Promise<Response> {
+  return fetch(`/api/communityBinding?action=${action}&platform=${platform}`, {
+    method: "POST",
+  });
+}
+
 export async function checkBinding(platform: string): Promise<BindStatus> {
-  const res = await fetch(`/api/bind?platform=${platform}`);
+  const res = await communityBinding("status", platform);
   return res.json();
 }
 
 export async function startBinding(platform: string): Promise<{ task_id: string }> {
-  const res = await fetch(`/api/bind/start?platform=${platform}`, { method: "POST" });
+  const res = await communityBinding("start", platform);
   return res.json();
 }
 
 export async function unbind(platform: string): Promise<{ bound: boolean }> {
-  const res = await fetch(`/api/bind?platform=${platform}`, { method: "DELETE" });
+  const res = await communityBinding("delete", platform);
   return res.json();
 }
 
 export async function refreshProfile(platform: string): Promise<BindStatus> {
-  const res = await fetch(`/api/bind/refresh?platform=${platform}`, { method: "POST" });
+  const res = await communityBinding("refresh", platform);
   return res.json();
 }
 
@@ -32,7 +41,7 @@ export interface BindWsCallbacks {
 
 export function connectBindWs(platform: string, cb: BindWsCallbacks): WebSocket {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(`${proto}//${location.host}/api/bind/ws?platform=${platform}`);
+  const ws = new WebSocket(`${proto}//${location.host}/api/communityBinding/ws?platform=${platform}`);
 
   ws.onmessage = (e) => {
     const data: PollResult = JSON.parse(e.data);

@@ -8,13 +8,12 @@ Usage:
 """
 
 import re
-from pathlib import Path
 
 import pytest
 from playwright.sync_api import sync_playwright
 
-from community.douban.login import DoubanLogin
-from community.douban.session import SessionManager
+from src.community.douban.login import DoubanLogin
+from src.community.douban.session import SessionManager
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +32,12 @@ def browser(playwright_instance):
 
 def test_qr_login_flow(browser, tmp_path):
     """Full flow: show QR -> wait for scan -> verify login state -> save session."""
-    session = SessionManager(state_path=tmp_path / "douban-state.json")
+    saved_state = {}
+
+    def on_save(state_json):
+        saved_state["json"] = state_json
+
+    session = SessionManager(on_save_state=on_save)
     storage = session.get_storage_state()
 
     context = browser.new_context(storage_state=storage)
@@ -43,14 +47,14 @@ def test_qr_login_flow(browser, tmp_path):
         page.goto("https://www.douban.com/")
         page.wait_for_load_state("domcontentloaded")
 
-        login = DoubanLogin(page, qr_output_dir=tmp_path)
+        login = DoubanLogin(page)
 
         # Already logged in from saved session
         if login.is_logged_in(page):
             print(">>> Already logged in")
         else:
-            qr_path = login.initiate_qr_login()
-            print(f"\n>>> Scan QR code at: {qr_path}")
+            qr_bytes = login.initiate_qr_login()
+            print(f"\n>>> QR code captured ({len(qr_bytes)} bytes)")
 
             while not login.is_logged_in(page):
                 page.wait_for_timeout(2000)

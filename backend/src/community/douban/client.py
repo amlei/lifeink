@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Callable
 
 from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
@@ -12,6 +11,7 @@ from .models.movie import Movie
 from .models.note import Note
 from .models.profile import Profile
 from .models.review import Review
+from . import BASE_URL
 from .login import DoubanLogin
 from .scrapers.books import BooksScraper
 from .scrapers.games import GamesScraper
@@ -22,6 +22,7 @@ from .scrapers.reviews import ReviewsScraper
 from .session import SessionManager
 
 ProgressCallback = Callable[[str], None]
+QrCallback = Callable[[bytes], None]
 
 
 class DoubanClient:
@@ -39,16 +40,22 @@ class DoubanClient:
         self,
         user_id: str | None = None,
         headless: bool = True,
-        state_path: Path | None = None,
         channel: str = "msedge",
         on_progress: ProgressCallback | None = None,
+        on_qr: QrCallback | None = None,
+        state_json: str | None = None,
+        on_save_state: Callable[[str], None] | None = None,
     ):
         self._user_id = user_id
         self._headless = headless
         self._channel = channel
-        self._session = SessionManager(state_path)
+        self._session = SessionManager(
+            state_json=state_json,
+            on_save_state=on_save_state,
+        )
         self._http: requests.Session | None = None
         self._on_progress = on_progress
+        self._on_qr = on_qr
 
     def __enter__(self) -> "DoubanClient":
         self._http = self._session.build_http_session()
@@ -70,7 +77,7 @@ class DoubanClient:
         if self._on_progress:
             self._on_progress(status)
 
-    def _run_playwright_login(self, qr_output_dir: Path | None = None) -> None:
+    def _run_playwright_login(self) -> None:
         """Launch Playwright solely for login, then close it and refresh http session."""
         pw = sync_playwright().start()
         browser: Browser | None = None
@@ -81,14 +88,15 @@ class DoubanClient:
             context = browser.new_context(storage_state=storage_state)
             page = context.new_page()
 
-            page.goto("https://www.douban.com/")
+            page.goto(f"{BASE_URL}/")
             page.wait_for_load_state("domcontentloaded")
 
-            login = DoubanLogin(page, qr_output_dir)
+            login = DoubanLogin(page)
             if not login.is_logged_in(page):
-                qr_path = login.initiate_qr_login()
-                self._notify("qr_ready")
-                print(f"Scan QR code: {qr_path}")
+                qr_bytes = login.initiate_qr_login()
+                if self._on_qr:
+                    self._on_qr(qr_bytes)
+                self._notify("pending")
 
                 try:
                     page.wait_for_selector(".account-qr-success", state="visible", timeout=120_000)
@@ -107,7 +115,7 @@ class DoubanClient:
             # Auto-detect user_id from /mine/ redirect
             if not self._user_id:
                 import re
-                page.goto("https://www.douban.com/mine/")
+                page.goto(f"{BASE_URL}/mine/")
                 page.wait_for_load_state("domcontentloaded")
                 m = re.search(r"/people/(\d+)", page.url)
                 if not m:
@@ -137,19 +145,19 @@ class DoubanClient:
         if self._user_id:
             return
         import re
-        resp = self._http.get("https://www.douban.com/mine/", allow_redirects=True)
+        resp = self._http.get(f"{BASE_URL}/mine/", allow_redirects=True)
         m = re.search(r"/people/(\d+)", resp.url)
         if not m:
             raise RuntimeError(f"Cannot extract user_id from URL: {resp.url}")
         self._user_id = m.group(1)
 
-    def ensure_ready(self, qr_output_dir: Path | None = None) -> None:
+    def ensure_ready(self) -> None:
         """Ensure session is valid. Login via Playwright only if needed."""
         if self._session.has_valid_session:
             self._ensure_user_id_via_http()
             return
 
-        self._run_playwright_login(qr_output_dir)
+        self._run_playwright_login()
 
     def scrape_profile(self) -> Profile:
         return ProfileScraper(self._http, self._user_id).scrape()

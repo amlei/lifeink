@@ -68,7 +68,10 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
 
       wsRef.current = connectBindWs("douban", {
         onQr: (base64) => setQrSrc(`data:image/png;base64,${base64}`),
-        onStatus: (status) => setBindPhase(status),
+        onStatus: (status) => {
+          setBindPhase(status);
+          if (status === "scanned") setQrSrc(null);
+        },
         onBound: (_userId, profile) => {
           setDoubanBound(true);
           setDoubanProfile(profile ?? null);

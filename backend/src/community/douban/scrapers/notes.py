@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 
+from .. import BASE_URL
 from ..models.note import Note
 from .base import BaseScraper, clean
 
@@ -7,7 +8,7 @@ from .base import BaseScraper, clean
 class NotesScraper(BaseScraper):
 
     def _url(self, page_num: int) -> str:
-        return "https://www.douban.com/mine/notes"
+        return f"{BASE_URL}/mine/notes"
 
     def _parse_page(self, soup: BeautifulSoup) -> list[Note]:
         elements = soup.select(".note-container")

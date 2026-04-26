@@ -2,6 +2,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from .. import BASE_URL
 from ..models.game import Game
 from .base import BaseScraper, clean
 
@@ -16,7 +17,7 @@ def _parse_game_rating(class_name: str | None) -> int | None:
 class GamesScraper(BaseScraper):
 
     def _url(self, page_num: int) -> str:
-        return f"https://www.douban.com/people/{self.user_id}/games?action=collect"
+        return f"{BASE_URL}/people/{self.user_id}/games?action=collect"
 
     def _parse_page(self, soup: BeautifulSoup) -> list[Game]:
         elements = soup.select(".common-item")

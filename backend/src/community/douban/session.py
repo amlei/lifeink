@@ -2,14 +2,13 @@ import json
 import time
 from http.cookiejar import Cookie
 from pathlib import Path
+from typing import Callable
 
 from playwright.sync_api import BrowserContext
 
 import requests
 
 
-_STATE_FILENAME = "douban-state.json"
-_PLAYWRIGHT_DIR = ".playwright"
 _AUTH_COOKIE = "dbcl2"
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -17,54 +16,51 @@ _USER_AGENT = (
 )
 
 
-def _resolve_project_root() -> Path:
-    """Walk up from this file to find the project root (directory with .git/ or .playwright/)."""
-    current = Path(__file__).resolve()
-    for parent in current.parents:
-        if (parent / ".git").is_dir() or (parent / _PLAYWRIGHT_DIR).is_dir():
-            return parent
-    return current.parents[5]
-
-
 class SessionManager:
-    """Manages Douban Playwright session state (cookies + localStorage)."""
+    """Manages Douban Playwright session state (cookies + localStorage).
 
-    def __init__(self, state_path: Path | None = None):
-        if state_path is not None:
-            self._state_path = state_path
-        else:
-            self._state_path = _resolve_project_root() / _PLAYWRIGHT_DIR / _STATE_FILENAME
+    Operates in DB mode: receives pre-loaded JSON string from the database
+    and writes back through a callback.
+    """
 
-    @property
-    def state_path(self) -> Path:
-        return self._state_path
+    def __init__(
+        self,
+        state_json: str | None = None,
+        on_save_state: Callable[[str], None] | None = None,
+    ):
+        self._state_json = state_json
+        self._on_save_state = on_save_state
 
     @property
     def has_valid_session(self) -> bool:
-        """Check if state file exists and the auth cookie has not expired."""
-        if not self._state_path.is_file() or self._state_path.stat().st_size == 0:
+        """Check if session state exists and the auth cookie has not expired."""
+        if not self._state_json:
             return False
         try:
-            data = json.loads(self._state_path.read_text(encoding="utf-8"))
+            data = json.loads(self._state_json)
         except (json.JSONDecodeError, OSError):
             return False
         now = time.time()
         for cookie in data.get("cookies", []):
             if cookie.get("name") == _AUTH_COOKIE:
-                expires = cookie.get("expires", -1)
-                return expires > now
+                return cookie.get("expires", -1) > now
         return False
 
     def get_storage_state(self) -> str | None:
-        """Return path string for browser.new_context(storage_state=...), or None."""
-        if self._state_path.is_file() and self._state_path.stat().st_size > 0:
-            return str(self._state_path)
-        return None
+        """Write state JSON to a temp file and return the path for Playwright."""
+        if not self._state_json:
+            return None
+        tmp = Path(__file__).resolve().parents[4] / "tmp" / "douban-state-db.json"
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(self._state_json, encoding="utf-8")
+        return str(tmp)
 
     def save_state(self, context: BrowserContext) -> None:
-        """Persist browser context state to disk."""
-        self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        context.storage_state(path=str(self._state_path))
+        """Persist browser context state via the callback."""
+        state = context.storage_state()
+        self._state_json = json.dumps(state, ensure_ascii=False)
+        if self._on_save_state:
+            self._on_save_state(self._state_json)
 
     def build_http_session(self) -> requests.Session:
         """Build a requests.Session with cookies and headers from saved state."""
@@ -74,11 +70,10 @@ class SessionManager:
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         })
 
-        if not self._state_path.is_file():
+        if not self._state_json:
             return session
-
         try:
-            data = json.loads(self._state_path.read_text(encoding="utf-8"))
+            data = json.loads(self._state_json)
         except (json.JSONDecodeError, OSError):
             return session
 

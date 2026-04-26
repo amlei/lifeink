@@ -2,6 +2,7 @@ import re
 
 from bs4 import BeautifulSoup, NavigableString
 
+from .. import BASE_URL
 from ..models.profile import Profile
 from .base import BaseScraper, clean
 
@@ -9,7 +10,7 @@ from .base import BaseScraper, clean
 class ProfileScraper(BaseScraper):
 
     def _url(self, page_num: int) -> str:
-        return f"https://www.douban.com/people/{self.user_id}/"
+        return f"{BASE_URL}/people/{self.user_id}/"
 
     def scrape(self, max_pages: int = 1) -> Profile:
         url = self._url(1)
