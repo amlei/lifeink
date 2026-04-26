@@ -19,7 +19,7 @@ export function WelcomeScreen({ onSend }: WelcomeScreenProps) {
       <div className="brand">LifeInk AI</div>
       <div className="input-box">
         <textarea
-          rows={2}
+          rows={4}
           placeholder="Ask about your reading, movies, journals..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
