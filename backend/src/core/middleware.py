@@ -11,8 +11,6 @@ from db.engine import async_session_factory
 WHITE_LIST: set[str] = {
     "/api/auth",
     "/api/chat",
-    "/docs",
-    "/openapi.json",
 }
 
 
