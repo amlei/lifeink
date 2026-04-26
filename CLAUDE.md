@@ -4,26 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LifeInk AI -- a personal data aggregator that scrapes book/movie data from Douban and syncs it to Notion. The project has two generations of code: the original `requests`-based Notion syncer (`main.py`), and a newer Playwright-based scraper module (`src/feature/`).
+LifeInk AI -- a personal data aggregator that scrapes book/movie data from Douban (and eventually WeRead, Flomo) and provides an AI chat interface. The project has two main subsystems: a legacy `requests`-based Notion syncer at the root, and a newer backend + frontend stack in `backend/` and `frontend/`.
 
 ## Development Commands
 
-### Root project (Notion sync)
-
-```bash
-pip install -r requirements.txt
-python main.py              # Syncs books to Notion (incremental)
-```
-
-No test suite exists. No linter is configured.
-
-### Backend module (Playwright scraper)
+### Backend (FastAPI + Playwright scraper)
 
 ```bash
 cd backend
 uv sync
 uv run python -m playwright install chromium   # first time only
-uv run python __main__.py --type books --pages 3
+uv run python __main__.py --type books --pages 3   # CLI scraper
+uv run python src/api.py                           # start API server (port 8000)
+uv run pytest tests/ -v -s                         # run tests
 ```
 
 Valid `--type` values: `profile`, `books`, `movies`, `games`, `reviews`, `notes`.
@@ -39,17 +32,59 @@ bun run lint          # run ESLint
 bun run preview       # preview production build
 ```
 
-Uses Bun as the runtime and package manager. Vite handles building and dev server.
-
 ### One-command startup
 
 ```bash
-./start.sh            # starts backend (uv) + frontend (bun) concurrently
+./start.sh            # starts backend (uv) + frontend (bun run dev) concurrently
 ```
+
+### Root project (legacy Notion sync)
+
+```bash
+pip install -r requirements.txt
+python main.py              # Syncs books to Notion (incremental)
+```
+
+No test suite or linter for the root project.
 
 ## Architecture
 
-### Root: Notion Sync Pipeline
+### Backend (`backend/`)
+
+Independent `uv`-managed project (Python >=3.12). Three layers:
+
+**API layer** (`src/api.py`, `src/api/bind.py`):
+- FastAPI app with CORS middleware. Started via `uvicorn` on port 8000.
+- `POST /api/chat` -- streaming text response (mock LLM, character-by-character).
+- `POST /api/communityBinding` -- platform bind/unbind/status/refresh (query params: `action`, `platform`).
+- `WS /api/communityBinding/ws` -- WebSocket push of binding progress (QR code, status transitions, profile).
+- `AsyncBindManager` runs Playwright login in a thread pool, notifying the WebSocket via `asyncio.Event`.
+
+**Scraper layer** (`src/community/`):
+- `DoubanClient` (`src/community/douban/client.py`): context manager that uses Playwright for login (QR code) and `requests` for data scraping. Auto-detects `user_id` from `/mine/` redirect.
+- `SessionManager` (`src/community/douban/session.py`): builds `requests.Session` from saved Playwright storage state cookies.
+- `BaseScraper` (`src/community/douban/scrapers/base.py`): pagination base class. Subclasses implement `_url()` and `_parse_page()`.
+- Each data type has a Pydantic model (`src/community/douban/models/`) and a scraper (`src/community/douban/scrapers/`): Book, Movie, Game, Review, Note, Profile.
+- `weread/` and `flomo/` packages are stubs.
+- Default browser channel is `msedge`.
+
+**Database layer** (`db/`):
+- SQLAlchemy async ORM over SQLite (`aiosqlite`). DB file: `backend/db/data/lifeink.db`.
+- `engine.py`: async engine, session factory, `get_default_user()`, `init_db()`.
+- `models.py`: ORM models -- `User`, `CommunityMeta` (platform binding + session state), `BookRow`, `MovieRow`, `GameRow`, `ReviewRow`, `NoteRow`. Each row model has a `to_pydantic()` method.
+- `repository.py`: `CommunityMetaRepo` (binding/session CRUD) and `DataRepo` (upsert + get for each data type, using SQLite `ON CONFLICT DO UPDATE`).
+- Auto-creates a default user (`amlei`) on `init_db()`.
+
+### Frontend (`frontend/`)
+
+Bun-managed React 19 + TypeScript + Vite.
+
+- `App.tsx` renders `Sidebar`, `ChatPanel`/`WelcomeScreen`, and a right panel placeholder. `ProfileModal` for settings.
+- `useChatStore` hook manages chat state (messages, history, active chat) with in-memory `Map` cache.
+- Vite dev server proxies `/api` (including WebSocket) to `http://localhost:8000`.
+- UI is in Chinese.
+
+### Root: Legacy Notion Sync Pipeline
 
 `main.py` -> `function/spider.py` -> `function/glo.py`
 
@@ -57,37 +92,15 @@ Uses Bun as the runtime and package manager. Vite handles building and dev serve
 2. `Book` class (`function/spider.py`) scrapes Douban HTML with `requests` + BeautifulSoup. `Video` extends `Book`, overriding `title()`, `other()`, `cover_link()`.
 3. `BookRun`/`VideoRun` (`main.py`) orchestrate: scrape -> create Notion page -> populate properties from JSON templates -> update page.
 4. Incremental sync: reads last synced title from `last mark/new_{book,video}.txt`, stops when that title is encountered.
-5. JSON templates in `json/` define Notion property schemas -- property names are in Chinese (e.g., "评分", "作者", "类别").
-6. `BookRun.update()` processes up to `Glo.MAXNum` (15) items per page with 2-second delays between Notion API calls and 5-second delays between Douban page fetches.
 
-### backend/: Playwright Scraper Module
-
-Independent `uv`-managed project with its own `pyproject.toml` and `.venv`.
-
-- `DoubanClient` (`community/douban/client.py`): context manager wrapping Playwright browser lifecycle. Auto-detects `user_id` from `/mine/` redirect. Handles QR login when session expires.
-- `SessionManager` (`community/douban/session.py`): persists browser storage state to `.playwright/douban-state.json`.
-- `BaseScraper` (`community/douban/scrapers/base.py`): pagination base class. Subclasses implement `_url()` and `_parse_page()`. Uses `clean()` helper to strip whitespace.
-- Each data type has a Pydantic model (`community/douban/models/`) and a scraper (`community/douban/scrapers/`). Models: `Book`, `Movie`, `Game`, `Review`, `Note`, `Profile`.
-- `weread/` and `flomo/` packages under `community/` are stubs (not yet implemented).
-- Default browser channel is `msedge`.
-
-### Key conventions
+## Key Conventions
 
 - All Notion property names in JSON templates and code are Chinese.
-- The root scraper uses `requests`; the backend module uses Playwright. They do not share code.
-- `last mark/` directory and `.playwright/` are gitignored (contain user-specific session data).
-- Strictly prohibited from using emojis.
+- The root scraper uses `requests`; the backend uses Playwright (for login) + `requests` (for scraping). They do not share code.
+- `last mark/`, `.playwright/`, `.playwright-cli/`, `backend/db/data/`, and `tmp/` are gitignored (contain user-specific session data and databases).
+- Strictly prohibited from using emojis in code or comments.
 - All files created for temporary use shall be placed in the `tmp/` directory.
-
-### frontend/: React Chat Interface
-
-Bun-managed project with Vite as the build tool.
-
-- React 19 + TypeScript, using Vercel AI SDK (`ai`, `@ai-sdk/react`) for streaming chat.
-- `App.tsx` renders `Sidebar`, `ChatPanel`, and `WelcomeScreen`.
-- `useChatStore` hook manages chat state (messages, history, active chat).
-- Vite dev server proxies `/api` requests to backend at `http://localhost:8000`.
-- `start.sh` launches both backend (uv) and frontend (bun run dev) concurrently.
+- Creating .sh and other script files is prohibited.
 
 ## Required Configuration
 
@@ -99,12 +112,9 @@ Bun-managed project with Vite as the build tool.
 - `DOUBANID` -- Douban user ID
 - `USER_AGENT`, `ACCEPT` -- HTTP headers for Douban requests
 - `BOOK_ICON`, `VIDEO_ICON` -- icon URLs for Notion pages
-- `STAR` -- character used to display ratings (e.g., a star symbol repeated for rating level)
+- `STAR` -- character used to display ratings
 
 ## CI/CD
 
 - `.github/workflows/pages.yml` -- deploys a GitHub Pages site
 - `.github/workflows/auto-merge.yml` -- auto-merge for dependabot PRs
-
-## Important principles
-Creating .sh and other script files is prohibited.
