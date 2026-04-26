@@ -327,7 +327,7 @@
 .settings-profile {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   margin-top: 20px;
 }
 
@@ -343,10 +343,10 @@
   flex-shrink: 0;
 }
 
-.profile-fields {
+.profile-grid {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
@@ -365,25 +365,91 @@
   font-size: 1.05rem;
   color: var(--text);
 }
-
-.profile-stats {
-  display: flex;
-  gap: 32px;
-  margin-top: 24px;
-}
-.profile-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.profile-stat strong {
+.profile-field strong {
   font-size: 1.5rem;
   color: var(--sky-600);
+  font-weight: 600;
 }
-.profile-stat span {
+
+.platform-section {
+  margin-top: 24px;
+}
+.platform-section h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 10px;
+}
+.platform-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-sidebar);
+  border-radius: var(--radius);
+  padding: 4px;
+}
+.platform-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.platform-tab.active {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.platform-panel {
+  margin-top: 12px;
+}
+.platform-binding {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-sidebar);
+}
+.platform-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.platform-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.platform-bind-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--sky-300);
+  background: none;
+  color: var(--sky-600);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.platform-bind-btn:hover {
+  background: var(--sky-50);
+}
+
+.platform-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.platform-icon.rounded {
+  border-radius: 4px;
 }
 
 /* ---- Center ---- */

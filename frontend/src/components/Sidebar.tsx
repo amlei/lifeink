@@ -122,7 +122,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
 
           <button className="new-chat-btn" onClick={onNewChat}>
             <MessageSquarePlus size={16} />
-            New Chat
+            新对话
           </button>
 
           <div className="sidebar-list">
@@ -176,7 +176,7 @@ export const Sidebar = forwardRef<HTMLElement, SidebarProps>(
             ) : (
               <div className="user-info user-login" onClick={onShowProfile}>
                 <LogIn size={16} />
-                <span>Login</span>
+                <span>登录</span>
               </div>
             )}
           </div>

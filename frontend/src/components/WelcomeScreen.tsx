@@ -20,7 +20,7 @@ export function WelcomeScreen({ onSend }: WelcomeScreenProps) {
       <div className="input-box">
         <textarea
           rows={4}
-          placeholder="Ask about your reading, movies, journals..."
+          placeholder="询问你的阅读、观影、日记..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {

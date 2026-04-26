@@ -69,7 +69,7 @@ export function ChatPanel({ chatId, store }: ChatPanelProps) {
         <div className="input-box">
           <textarea
             rows={4}
-            placeholder="Continue the conversation..."
+            placeholder="继续对话..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
